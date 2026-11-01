@@ -58,6 +58,12 @@ public final class ForesightConfig {
     public final ConfigVar<Double> maxPathSpeed = ConfigVar.of(Constraint.NONE, positive());
 
     /**
+     * Limits the power sent to driving along the path, 0 to 1. Corrections back onto the path are not limited by this.
+     * Use it on one path with path.with(config.maxDrivePower.at(0.7)).
+     */
+    public final ConfigVar<Double> maxDrivePower = ConfigVar.of(1.0, positive());
+
+    /**
      * Limits the robot's deceleration by a fraction of your robot's natural deceleration. Cannot be greater than 1. If faster deceleration is necessary leave this as Constraint.NONE and use the default braking.
      */
     public final ConfigVar<Double> maxDecelerationScale = ConfigVar.of(Constraint.NONE, positive());

@@ -303,9 +303,10 @@ public class Foresight implements Algorithm {
                 config.maxAchievableForwardVelocity.get(), config.maxAchievableStrafeVelocity.get(), angleToTangent);
         targetVelocity = Math.min(profiledTargetVelocity, maxAchievableVelocity);
 
-        if (!isBraking)
-            return coast(tangentialVel, deltaTime, maxAchievableVelocity, state, curve, angleToTangent, drivetrain);
-        return config.brake.get().calculate(targetVelocity, 0);
+        double power = isBraking
+                ? config.brake.get().calculate(targetVelocity, 0)
+                : coast(tangentialVel, deltaTime, maxAchievableVelocity, state, curve, angleToTangent, drivetrain);
+        return Math.min(power, config.maxDrivePower.get());
     }
 
     public double coast(
