@@ -16,7 +16,7 @@ import java.util.concurrent.TimeUnit;
 
 import static org.firstinspires.ftc.teamcode.follower.api.Paths.*;
 
-@Autonomous(name = "Crazy")
+@Autonomous(name = "Example Auto")
 public class ExampleAuto extends LinearOpMode {
 
     private enum State {
