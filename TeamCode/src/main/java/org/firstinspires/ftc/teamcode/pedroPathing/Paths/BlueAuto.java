@@ -2,38 +2,43 @@ package org.firstinspires.ftc.teamcode.pedroPathing.Paths;
 
 import com.bylazar.telemetry.PanelsTelemetry;
 import com.bylazar.telemetry.TelemetryManager;
+import com.qualcomm.robotcore.eventloop.opmode.Autonomous;
+import com.qualcomm.robotcore.eventloop.opmode.LinearOpMode;
+import com.qualcomm.robotcore.util.ElapsedTime;
+
 import org.firstinspires.ftc.teamcode.follower.api.PoseFactory;
 import org.firstinspires.ftc.teamcode.follower.follower.Follower;
 import org.firstinspires.ftc.teamcode.follower.math.Pose;
 import org.firstinspires.ftc.teamcode.follower.paths.Path;
 import org.firstinspires.ftc.teamcode.follower.utils.Angle;
-import org.firstinspires.ftc.teamcode.follower.utils.Timer;
-import com.qualcomm.robotcore.eventloop.opmode.Autonomous;
-import com.qualcomm.robotcore.eventloop.opmode.LinearOpMode;
-
 import org.firstinspires.ftc.teamcode.pedroPathing.Constants;
 
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.List;
-import java.util.concurrent.TimeUnit;
 
 import static org.firstinspires.ftc.teamcode.follower.api.Paths.*;
 
+/**
+ * Blue auto. The route is a list of legs: each one waits, drives one path, then waits again.
+ * Edit the route in route(). Everything below the route runs it and should rarely need changes.
+ */
 @Autonomous(name = "Crazy")
 public class BlueAuto extends LinearOpMode {
 
     // =================================================================
-    //  GLOBAL SETTINGS
+    //  SETTINGS
     // =================================================================
-    private static final double START_DELAY = 0.0;   // seconds to wait after START before leg 1
+    private static final double DRIVE_POWER = 0.7;   // max power while driving along a path
+    private static final double START_DELAY = 0.0;   // s after START before the first leg
 
-    // Defaults every leg starts with. Override any of them per leg in buildRoute().
-    private static final double DEFAULT_PRE_DELAY       = 0.0;                 // s, wait before driving
-    private static final double DEFAULT_POST_DELAY      = 0.2;                 // s, wait after arriving
-    private static final double DEFAULT_TIMEOUT         = 5.0;                 // s, max time driving
-    private static final double DEFAULT_POS_TOL         = 1.5;                 // in, "close enough"
-    private static final double DEFAULT_HEADING_TOL_DEG = 5.0;                 // deg, "close enough"
-    private static final double DEFAULT_TIMEOUT_POS_TOL = 4.0;                 // in, ok to continue at timeout
+    // Defaults for every leg. Override any of them per leg in route().
+    private static final double WAIT_BEFORE     = 0.0;   // s, pause before driving
+    private static final double WAIT_AFTER      = 0.2;   // s, pause after arriving
+    private static final double TIMEOUT         = 5.0;   // s, max time to reach the end
+    private static final double POS_TOL         = 1.5;   // in, close enough to the end
+    private static final double HEADING_TOL     = 5.0;   // deg, close enough to the end heading
+    private static final double TIMEOUT_POS_TOL = 4.0;   // in, still ok to continue at timeout
 
     // =================================================================
     //  POSES
@@ -50,21 +55,20 @@ public class BlueAuto extends LinearOpMode {
     private final Pose backShoot        = p.of(84.1, 33.5, 90);
 
     // =================================================================
-    //  ACTIONS - what the robot does at the start / end of a leg
+    //  ACTIONS
     // =================================================================
-    private enum Action { NONE, SHOOT, INTAKE, STOP_INTAKE }
+    private enum Action { SHOOT, INTAKE, STOP_INTAKE }
 
-    private void startAction(Action a) {
+    private void start(Action a) {
         switch (a) {
             case SHOOT:       /* TODO: start shooter / feed rings */ break;
             case INTAKE:      /* TODO: intake on */                  break;
             case STOP_INTAKE: /* TODO: intake off */                 break;
-            default: break;
         }
     }
 
-    /** Return true when the action is finished so the post-delay can end early. */
-    private boolean actionDone(Action a) {
+    /** True once the action has finished, so the wait after a leg can end early. */
+    private boolean finished(Action a) {
         switch (a) {
             case SHOOT:  return false;   // TODO: return shooterFinished();
             case INTAKE: return false;   // TODO: return intakeFull();
@@ -73,191 +77,165 @@ public class BlueAuto extends LinearOpMode {
     }
 
     // =================================================================
-    //  ROUTE - one line per leg. Change order, delays, tolerances here.
+    //  ROUTE - one entry per leg
+    //    .waitBefore(s) / .waitAfter(s)   pause before driving / after arriving
+    //    .at(s, action)                   start an action s seconds after the leg starts driving
+    //    .onArrive(action)                start an action on arrival; the wait after ends early once it finishes
+    //    .timeout(s) .posTol(in) .headingTol(deg) .timeoutPosTol(in)
     // =================================================================
-    private List<Leg> route;
+    private List<Leg> route() {
+        return Arrays.asList(
+                new Leg("Preload shot", line(start, frontShoot).constant(frontShoot))
+                        .onArrive(Action.SHOOT).waitAfter(1.5),
 
-    private void buildRoute() {
-        route = new ArrayList<>();
+                new Leg("To preIntake", line(frontShoot, preIntake).linear(frontShoot, preIntake))
+                        .at(0, Action.INTAKE).waitAfter(0.5),
 
-        route.add(new Leg("Preload shot", line(start, frontShoot).constant(frontShoot), frontShoot)
-                .postAction(Action.SHOOT).postDelay(1.5));
+                new Leg("Back to shoot", line(preIntake, frontShoot).linear(preIntake, frontShoot))
+                        .at(0, Action.STOP_INTAKE).onArrive(Action.SHOOT).waitAfter(1.5),
 
-        route.add(new Leg("To preIntake", line(frontShoot, preIntake).linear(frontShoot, preIntake), preIntake)
-                .duringAction(Action.INTAKE).postDelay(0.5));
+                new Leg("To intFlower",
+                        curve(frontShoot, firstFloControl, secondFloControl, intFlower).linear(frontShoot, intFlower))
+                        .at(0, Action.INTAKE).waitAfter(0.5).timeout(6.0),
 
-        route.add(new Leg("Back to shoot", line(preIntake, frontShoot).linear(preIntake, frontShoot), frontShoot)
-                .duringAction(Action.STOP_INTAKE).postAction(Action.SHOOT).postDelay(1.5));
+                new Leg("To backShoot", line(intFlower, backShoot).linear(intFlower, backShoot))
+                        .at(0, Action.STOP_INTAKE).onArrive(Action.SHOOT).waitAfter(1.5),
 
-        // The only curve
-        route.add(new Leg("To intFlower",
-                curve(frontShoot, firstFloControl, secondFloControl, intFlower).linear(frontShoot, intFlower),
-                intFlower)
-                .duringAction(Action.INTAKE).postDelay(0.5).timeout(6.0));
-
-        route.add(new Leg("To backShoot", line(intFlower, backShoot).linear(intFlower, backShoot), backShoot)
-                .duringAction(Action.STOP_INTAKE).postAction(Action.SHOOT).postDelay(1.5));
-
-        route.add(new Leg("Park", line(backShoot, postIntake).linear(backShoot, postIntake), postIntake)
-                .timeout(7.0).posTol(3.0));
+                new Leg("Park", line(backShoot, postIntake).linear(backShoot, postIntake))
+                        .timeout(7.0).posTol(3.0)
+        );
     }
 
-    // =================================================================
-    //  LEG CONFIG (no need to edit below unless changing behavior)
-    // =================================================================
     private static class Leg {
         final String name;
         final Path path;
-        final Pose target;
+        final Pose end;
+        double waitBefore = WAIT_BEFORE, waitAfter = WAIT_AFTER, timeout = TIMEOUT;
+        double posTol = POS_TOL, headingTol = Math.toRadians(HEADING_TOL), timeoutPosTol = TIMEOUT_POS_TOL;
+        Action onArrive = null;
+        final List<Timed> timed = new ArrayList<>();
 
-        double preDelay       = DEFAULT_PRE_DELAY;
-        double postDelay      = DEFAULT_POST_DELAY;
-        double minPostDelay   = 0.0;      // post-delay can't end early before this
-        double timeout        = DEFAULT_TIMEOUT;
-        double posTol         = DEFAULT_POS_TOL;
-        double headingTol     = Math.toRadians(DEFAULT_HEADING_TOL_DEG);
-        double timeoutPosTol  = DEFAULT_TIMEOUT_POS_TOL;
-        Action duringAction   = Action.NONE;   // started when the robot starts driving
-        Action postAction     = Action.NONE;   // started when the robot arrives
-
-        Leg(String name, Path path, Pose target) {
+        Leg(String name, Path path) {
             this.name = name;
-            this.path = path;
-            this.target = target;
+            this.path = path.with(Constants.foresightConfig.maxDrivePower.at(DRIVE_POWER));
+            this.end = path.endPose();
         }
 
-        Leg preDelay(double s)        { preDelay = s; return this; }
-        Leg postDelay(double s)       { postDelay = s; return this; }
-        Leg minPostDelay(double s)    { minPostDelay = s; return this; }
-        Leg timeout(double s)         { timeout = s; return this; }
-        Leg posTol(double in)         { posTol = in; return this; }
-        Leg headingTolDeg(double deg) { headingTol = Math.toRadians(deg); return this; }
-        Leg timeoutPosTol(double in)  { timeoutPosTol = in; return this; }
-        Leg duringAction(Action a)    { duringAction = a; return this; }
-        Leg postAction(Action a)      { postAction = a; return this; }
+        Leg waitBefore(double s)       { waitBefore = s; return this; }
+        Leg waitAfter(double s)        { waitAfter = s; return this; }
+        Leg timeout(double s)          { timeout = s; return this; }
+        Leg posTol(double in)          { posTol = in; return this; }
+        Leg headingTol(double deg)     { headingTol = Math.toRadians(deg); return this; }
+        Leg timeoutPosTol(double in)   { timeoutPosTol = in; return this; }
+        Leg onArrive(Action a)         { onArrive = a; return this; }
+        Leg at(double s, Action a)     { timed.add(new Timed(s, a)); return this; }
+    }
+
+    private static class Timed {
+        final double time;
+        final Action action;
+        boolean started = false;
+
+        Timed(double time, Action action) {
+            this.time = time;
+            this.action = action;
+        }
     }
 
     // =================================================================
-    //  STATE MACHINE
+    //  RUNNER
     // =================================================================
-    private enum Phase { START_DELAY, PRE_DELAY, FOLLOW, WAIT, POST_DELAY, DONE }
+    private enum Phase { WAIT_BEFORE, DRIVE, WAIT_AFTER, DONE }
 
-    private Phase phase = Phase.START_DELAY;
+    private Phase phase = Phase.WAIT_BEFORE;
     private int legIndex = 0;
-
-    private TelemetryManager telemetryM;
-    private Follower follower;
-    private Timer timer;
-    private boolean timedOut = false;
-    private String failedPath = "None";
-    private String arriveReason = "-";
+    private final ElapsedTime phaseTimer = new ElapsedTime();
+    private final ElapsedTime driveTimer = new ElapsedTime();   // timed actions count from the start of driving
+    private String lastArrival = "-";
+    private String failedLeg = "None";
 
     @Override
     public void runOpMode() throws InterruptedException {
-
-        follower = Constants.create(hardwareMap);
+        Follower follower = Constants.create(hardwareMap);
         follower.setPose(start);
-        telemetryM = PanelsTelemetry.INSTANCE.getTelemetry();
-        timer = new Timer();
-
-        buildRoute();
+        TelemetryManager telemetryM = PanelsTelemetry.INSTANCE.getTelemetry();
+        List<Leg> route = route();
 
         waitForStart();
         if (isStopRequested()) return;
-
-        setPhase(Phase.START_DELAY);
+        phaseTimer.reset();
 
         while (opModeIsActive()) {
-
             follower.update();
-
-            double t = timer.get(TimeUnit.SECONDS);
+            Pose pose = follower.pose();
             Leg leg = phase == Phase.DONE ? null : route.get(legIndex);
+            double t = phaseTimer.seconds();
+
+            if (phase == Phase.DRIVE || phase == Phase.WAIT_AFTER) {
+                for (Timed timed : leg.timed) {
+                    if (!timed.started && driveTimer.seconds() >= timed.time) {
+                        start(timed.action);
+                        timed.started = true;
+                    }
+                }
+            }
 
             switch (phase) {
-
-                case START_DELAY:
-                    if (t >= START_DELAY) setPhase(Phase.PRE_DELAY);
+                case WAIT_BEFORE:
+                    if (t >= leg.waitBefore + (legIndex == 0 ? START_DELAY : 0)) {
+                        follower.follow(leg.path);
+                        driveTimer.reset();
+                        setPhase(Phase.DRIVE);
+                    }
                     break;
 
-                case PRE_DELAY:
-                    if (t >= leg.preDelay) setPhase(Phase.FOLLOW);
-                    break;
-
-                case FOLLOW:
-                    follower.follow(leg.path);
-                    startAction(leg.duringAction);
-                    setPhase(Phase.WAIT);
-                    break;
-
-                case WAIT: {
-                    double dist = follower.pose().distance(leg.target);
-                    double headErr = Math.abs(Angle.error(follower.pose().heading(), leg.target.heading()));
-                    boolean closeEnough = dist <= leg.posTol && headErr <= leg.headingTol;
-                    boolean timeUp = t >= leg.timeout;
-
-                    if (!follower.isBusy()) {
-                        arrive(leg, "follower done");
-                    } else if (closeEnough) {
-                        arrive(leg, "close enough");              // fail-safe 1
-                    } else if (timeUp && dist <= leg.timeoutPosTol) {
-                        arrive(leg, "timeout, near target");      // fail-safe 2
-                    } else if (timeUp) {
-                        fail(leg.name);                           // fail-safe 3
+                case DRIVE: {
+                    double dist = pose.distance(leg.end);
+                    double headErr = Math.abs(Angle.error(pose.heading(), leg.end.heading()));
+                    if (dist <= leg.posTol && headErr <= leg.headingTol) {
+                        arrive(leg, "close enough");
+                    } else if (t >= leg.timeout && dist <= leg.timeoutPosTol) {
+                        arrive(leg, "timeout, near end");
+                    } else if (t >= leg.timeout) {
+                        failedLeg = leg.name;   // too far off to trust the rest of the route
+                        setPhase(Phase.DONE);
                     }
                     break;
                 }
 
-                case POST_DELAY: {
-                    boolean maxDone = t >= leg.postDelay;
-                    boolean earlyDone = t >= leg.minPostDelay && leg.postAction != Action.NONE
-                            && actionDone(leg.postAction);
-                    if (maxDone || earlyDone) nextLeg();
+                case WAIT_AFTER:
+                    if (t >= leg.waitAfter || (leg.onArrive != null && finished(leg.onArrive))) {
+                        legIndex++;
+                        setPhase(legIndex < route.size() ? Phase.WAIT_BEFORE : Phase.DONE);
+                    }
                     break;
-                }
 
                 case DONE:
                     follower.manual(0, 0, 0);
                     break;
             }
 
-            Pose current = follower.pose();
-            telemetryM.addData("X", current.x());
-            telemetryM.addData("Y", current.y());
-            telemetryM.addData("Heading", Math.toDegrees(current.heading()));
+            telemetryM.addData("X", pose.x());
+            telemetryM.addData("Y", pose.y());
+            telemetryM.addData("Heading", Math.toDegrees(pose.heading()));
             telemetryM.addData("Leg", leg == null ? "DONE" : (legIndex + 1) + "/" + route.size() + " " + leg.name);
             telemetryM.addData("Phase", phase);
-            telemetryM.addData("Follower Busy", follower.isBusy());
-            telemetryM.addData("Timer (s)", t);
-            telemetryM.addData("Timed Out", timedOut);
-            telemetryM.addData("Failed Path", failedPath);
-            telemetryM.addData("Last Arrival", arriveReason);
-            telemetryM.addData("Distance To Path End", follower.distanceToEndpoint());
-            telemetryM.update();
+            telemetryM.addData("Phase time (s)", t);
+            telemetryM.addData("Distance to end", leg == null ? 0 : pose.distance(leg.end));
+            telemetryM.addData("Last arrival", lastArrival);
+            telemetryM.addData("Failed leg", failedLeg);
+            telemetryM.update(telemetry);
         }
     }
 
     private void arrive(Leg leg, String reason) {
-        arriveReason = leg.name + ": " + reason;
-        startAction(leg.postAction);
-        setPhase(Phase.POST_DELAY);
+        lastArrival = leg.name + ": " + reason;
+        if (leg.onArrive != null) start(leg.onArrive);
+        setPhase(Phase.WAIT_AFTER);
     }
 
-    private void nextLeg() {
-        legIndex++;
-        setPhase(legIndex >= route.size() ? Phase.DONE : Phase.PRE_DELAY);
-    }
-
-    private void setPhase(Phase newPhase) {
-        phase = newPhase;
-        timer.reset();
-    }
-
-    private void fail(String pathName) {
-        timedOut = true;
-        failedPath = pathName;
-        setPhase(Phase.DONE);
+    private void setPhase(Phase next) {
+        phase = next;
+        phaseTimer.reset();
     }
 }
-
-
