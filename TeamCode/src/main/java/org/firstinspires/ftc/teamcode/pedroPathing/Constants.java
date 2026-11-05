@@ -44,6 +44,11 @@ public class Constants {
         c.globalDistanceUnit.set(DistanceUnit.INCH);
         c.offsetUnits.set(DistanceUnit.INCH);
     });
+    // Multiplies how far the follower expects the robot to slide when it brakes.
+    // Raise it if paths overshoot the end, lower it if they stop short. 1.0 = the tuner's values.
+    // Keep this when pasting new braking numbers from the tuner.
+    public static double BRAKE_DISTANCE_SCALE = 1.25;
+
     public static ForesightConfig foresightConfig = new ForesightConfig(
             c -> {
                 Controller primaryTranslationalForward = Controller.proportional(0.3037490394625579);
@@ -60,8 +65,10 @@ public class Constants {
                 c.headingFeedback.set(Controller.proportional(3.7953820966472174));
                 c.headingBrakeCoefficients.set(Vector2D.cartesian(0.048285712631746136, 0.006261520682572008));
 
-                c.linearBrakeCoefficients.set(Matrix.diag(0.09882604619487761, 0.04435214837327175));
-                c.quadraticBrakeCoefficients.set(Matrix.diag(0.0014762060744661308, 0.0021492199125502866));
+                c.linearBrakeCoefficients.set(Matrix.diag(
+                        0.09882604619487761 * BRAKE_DISTANCE_SCALE, 0.04435214837327175 * BRAKE_DISTANCE_SCALE));
+                c.quadraticBrakeCoefficients.set(Matrix.diag(
+                        0.0014762060744661308 * BRAKE_DISTANCE_SCALE, 0.0021492199125502866 * BRAKE_DISTANCE_SCALE));
 
                 c.maxAchievableForwardVelocity.set(67.52000284297945);
                 c.maxAchievableStrafeVelocity.set(59.132557087254895);
