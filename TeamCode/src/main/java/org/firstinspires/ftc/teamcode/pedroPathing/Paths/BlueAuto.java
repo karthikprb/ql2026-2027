@@ -48,7 +48,7 @@ public class BlueAuto extends LinearOpMode {
     private final Pose start            = p.of(85, 132, 270);
     private final Pose frontShoot       = p.of(85, 107, 270);
     private final Pose preIntake        = p.of(104.8, 133.6, 0);
-    private final Pose postIntake       = p.of(0, 24, 180);
+    private final Pose postIntake       = p.of(128.8, 133.6, 0);   // 24 in forward of preIntake
     private final Pose intFlower        = p.of(94, 10.6, 270);
     private final Pose firstFloControl  = p.of(77, 54, 0);
     private final Pose secondFloControl = p.of(94, 29.1, 0);
@@ -91,7 +91,9 @@ public class BlueAuto extends LinearOpMode {
                 new Leg("To preIntake", line(frontShoot, preIntake).linear(frontShoot, preIntake))
                         .at(0, Action.INTAKE).waitAfter(0.5),
 
-                new Leg("Back to shoot", line(preIntake, frontShoot).linear(preIntake, frontShoot))
+                new Leg("To postIntake", line(preIntake, postIntake).linear(preIntake, postIntake)),
+
+                new Leg("Back to shoot", line(postIntake, frontShoot).linear(postIntake, frontShoot))
                         .at(0, Action.STOP_INTAKE).onArrive(Action.SHOOT).waitAfter(1.5),
 
                 new Leg("To intFlower",
@@ -99,10 +101,11 @@ public class BlueAuto extends LinearOpMode {
                         .at(0, Action.INTAKE).waitAfter(0.5).timeout(6.0),
 
                 new Leg("To backShoot", line(intFlower, backShoot).linear(intFlower, backShoot))
-                        .at(0, Action.STOP_INTAKE).onArrive(Action.SHOOT).waitAfter(1.5),
+                        .at(0, Action.STOP_INTAKE).onArrive(Action.SHOOT).waitAfter(1.5)
 
-                new Leg("Park", line(backShoot, postIntake).linear(backShoot, postIntake))
-                        .timeout(7.0).posTol(3.0)
+                // Park, turned off for now: the route ends after the backShoot shot.
+                // new Leg("Park", line(backShoot, postIntake).linear(backShoot, postIntake))
+                //         .timeout(7.0).posTol(3.0)
         );
     }
 
