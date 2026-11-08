@@ -19,8 +19,9 @@ import org.firstinspires.ftc.teamcode.follower.utils.Angle;
  *
  * Two ways to use it:
  *   - Manual:  setTargetRpm(), setHoodPosition(), setTurretDegrees()
- *   - Auto:    aimAt(robotPose) every loop. Distance and angle to GOAL are turned into an
- *              RPM, hood position and turret angle with the placeholder formulas below.
+ *   - Auto:    setAlliance() once, then aimAt(robotPose) every loop. It picks the alliance's
+ *              goal on the robot's side of the field, and turns distance and angle to it into
+ *              an RPM, hood position and turret angle with the placeholder formulas below.
  *
  * In both cases call update() once per loop so the PIDs run, and handleGamepad(gamepad2)
  * if you want the driver to be able to trim RPM / hood / turret with the dpad and bumpers.
@@ -70,12 +71,44 @@ public class Shooter {
     public static double TURRET_TOLERANCE_DEG = 1.0;
 
     // =================================================================
-    //  AIMING  (field inches / degrees, same frame as the Pedro pose)
+    //  GOALS  (field inches, same frame as the Pedro pose: 0..144 on both axes)
+    //
+    //  BIOBUZZ: one HIVE structure in the middle of the field holds a red HIVE and a blue
+    //  HIVE. Each HIVE has two CELLS, one toward the audience and one toward the far side,
+    //  about 18.8 in apart. That is 4 goals total, 2 per alliance. The robot shoots at the
+    //  CELL on its own side of the field, so aimAt() picks whichever of the alliance's two
+    //  CELLS is closer to the robot.
+    //
+    //  The x/y/z below are PLACEHOLDERS worked out from the frame size. Measure the real
+    //  ones off the field CAD or with a tape measure from the field walls.
     // =================================================================
-    public static double GOAL_X = 0;                        // PLACEHOLDER: goal position on the field
-    public static double GOAL_Y = 144;
 
-    // PLACEHOLDER formulas, linear in distance. Replace with your tuned fit (see testing notes).
+    /** A goal position on the field: x, y in inches on the tiles, z = opening height above the tiles. */
+    public static class Goal {
+        public final String name;
+        public final double x, y, z;
+
+        public Goal(String name, double x, double y, double z) {
+            this.name = name;
+            this.x = x;
+            this.y = y;
+            this.z = z;
+        }
+    }
+
+    public enum Alliance { RED, BLUE }
+
+    public static double GOAL_Z = 43.95;              // PLACEHOLDER: HIVE pivot axis height. Measure the up-facing CELL opening.
+    public static double SHOOTER_EXIT_HEIGHT = 12.0;  // PLACEHOLDER: height of the ball leaving the shooter, inches above tiles
+
+    // Field centre is (72, 72). Blue HIVE is on the +x half, red on the -x half (PLACEHOLDER).
+    // "Far" = away from the audience (+y), "Near" = audience side (-y).
+    public static Goal BLUE_FAR  = new Goal("Blue far",  84, 81.4, GOAL_Z);
+    public static Goal BLUE_NEAR = new Goal("Blue near", 84, 62.6, GOAL_Z);
+    public static Goal RED_FAR   = new Goal("Red far",   60, 81.4, GOAL_Z);
+    public static Goal RED_NEAR  = new Goal("Red near",  60, 62.6, GOAL_Z);
+
+    // PLACEHOLDER formulas, linear in horizontal distance. Replace with your tuned fit (see testing notes).
     //   rpm  = RPM_BASE  + RPM_PER_INCH  * distance
     //   hood = HOOD_BASE + HOOD_PER_INCH * distance
     public static double RPM_BASE = 2500;
@@ -111,7 +144,9 @@ public class Shooter {
     private double hoodTrim = 0;
     private double turretTrimDeg = 0;
 
-    // ---------------- last aim info, for telemetry ----------------
+    // ---------------- aiming ----------------
+    private Alliance alliance = Alliance.BLUE;
+    private Goal activeGoal = BLUE_FAR;
     private double lastDistanceToGoal = 0;
 
     public Shooter(HardwareMap hardwareMap) {
@@ -170,13 +205,43 @@ public class Shooter {
     //  AUTO AIM
     // =================================================================
 
+    /** Which alliance's HIVE to shoot at. Set this once from the OpMode (e.g. in init). */
+    public void setAlliance(Alliance alliance) {
+        this.alliance = alliance;
+    }
+
+    public Alliance getAlliance() {
+        return alliance;
+    }
+
+    /** The goal aimAt() last used. */
+    public Goal getActiveGoal() {
+        return activeGoal;
+    }
+
     /**
-     * Works out RPM, hood and turret angle from the robot's field pose and the GOAL position.
-     * Call every loop while lining up, then update().
+     * Picks the alliance's CELL on the robot's side of the field, i.e. whichever of the
+     * two is closer to the robot.
+     */
+    public Goal chooseGoal(Pose robotPose) {
+        Goal far = alliance == Alliance.BLUE ? BLUE_FAR : RED_FAR;
+        Goal near = alliance == Alliance.BLUE ? BLUE_NEAR : RED_NEAR;
+        return horizontalDistance(robotPose, far) <= horizontalDistance(robotPose, near) ? far : near;
+    }
+
+    /**
+     * Works out RPM, hood and turret angle from the robot's field pose and the goal on the
+     * robot's side of the field. Call every loop while lining up, then update().
      */
     public void aimAt(Pose robotPose) {
-        double dx = GOAL_X - robotPose.x();
-        double dy = GOAL_Y - robotPose.y();
+        aimAt(robotPose, chooseGoal(robotPose));
+    }
+
+    /** Same as aimAt(pose) but at a specific goal. */
+    public void aimAt(Pose robotPose, Goal goal) {
+        activeGoal = goal;
+        double dx = goal.x - robotPose.x();
+        double dy = goal.y - robotPose.y();
         lastDistanceToGoal = Math.hypot(dx, dy);
 
         setTargetRpm(rpmForDistance(lastDistanceToGoal));
@@ -189,12 +254,21 @@ public class Shooter {
         setTurretDegrees(turretForRelativeAngle(Math.toDegrees(relativeRad)));
     }
 
-    /** PLACEHOLDER: flywheel RPM for a given distance (inches) to the goal. */
+    private static double horizontalDistance(Pose robotPose, Goal goal) {
+        return Math.hypot(goal.x - robotPose.x(), goal.y - robotPose.y());
+    }
+
+    /** How far the goal opening is above the ball's exit point. Same for every goal, since GOAL_Z is shared. */
+    public static double heightToGoal() {
+        return GOAL_Z - SHOOTER_EXIT_HEIGHT;
+    }
+
+    /** PLACEHOLDER: flywheel RPM for a given horizontal distance (inches) to the goal. */
     public static double rpmForDistance(double distanceIn) {
         return RPM_BASE + RPM_PER_INCH * distanceIn;
     }
 
-    /** PLACEHOLDER: hood servo position for a given distance (inches) to the goal. */
+    /** PLACEHOLDER: hood servo position for a given horizontal distance (inches) to the goal. */
     public static double hoodForDistance(double distanceIn) {
         return HOOD_BASE + HOOD_PER_INCH * distanceIn;
     }
