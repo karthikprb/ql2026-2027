@@ -10,7 +10,9 @@ import com.qualcomm.robotcore.eventloop.opmode.LinearOpMode;
 import com.qualcomm.robotcore.eventloop.opmode.TeleOp;
 import com.qualcomm.robotcore.util.Range;
 
-import org.firstinspires.ftc.teamcode.Components.Mecanum;
+import org.firstinspires.ftc.teamcode.follower.drivetrain.DrivePowers;
+import org.firstinspires.ftc.teamcode.follower.hardware.Mecanum;
+import org.firstinspires.ftc.teamcode.pedroPathing.Constants;
 
 import java.util.List;
 
@@ -50,7 +52,7 @@ public class LimelightDriveToTag extends LinearOpMode {
         limelight = hardwareMap.get(
                 Limelight3A.class, "limelight");
 
-        mecanum = new Mecanum(hardwareMap, telemetry);
+        mecanum = new Mecanum(hardwareMap, Constants.drivetrainConfig);
 
         limelight.pipelineSwitch(PIPELINE);
         limelight.start();
@@ -120,7 +122,7 @@ public class LimelightDriveToTag extends LinearOpMode {
 
                     if (Math.abs(tx) > TX_TOLERANCE_DEG) {
                         // Positive TX means target is to the right.
-                        // Negative rotation commands a clockwise turn.
+                        // Pedro's Mecanum: negative turn = clockwise.
                         turn = Range.clip(
                                 -tx * TURN_GAIN,
                                 -MAX_TURN, MAX_TURN);
@@ -129,14 +131,14 @@ public class LimelightDriveToTag extends LinearOpMode {
                     if (Math.abs(distanceError)
                             > DISTANCE_TOLERANCE_M) {
 
-                        // Mecanum.setPower uses negative Y for forward.
+                        // Pedro's Mecanum: positive = forward.
                         // Only approach when the tag is approximately centered.
                         if (Math.abs(tx) <= 10.0) {
                             double forward = Range.clip(
                                     distanceError * DRIVE_GAIN,
                                     -MAX_DRIVE, MAX_DRIVE);
 
-                            drive = -forward;
+                            drive = forward;
                         }
                     }
 
@@ -160,15 +162,13 @@ public class LimelightDriveToTag extends LinearOpMode {
                 telemetryM.addData("Target", "No matching AprilTag");
             }
 
-            mecanum.setPower(strafe, drive, turn);
-            mecanum.writeAll();
+            mecanum.drive(new DrivePowers(drive, strafe, turn), true);
 
             telemetryM.update(telemetry);
             sleep(20);
         }
 
         limelight.stop();
-        mecanum.setPower(0, 0, 0);
-        mecanum.writeAll();
+        mecanum.stop();
     }
 }
