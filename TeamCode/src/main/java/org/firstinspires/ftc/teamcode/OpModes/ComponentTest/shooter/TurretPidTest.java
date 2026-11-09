@@ -1,8 +1,8 @@
 package org.firstinspires.ftc.teamcode.OpModes.ComponentTest.shooter;
 
-import com.bylazar.configurables.annotations.Configurable;
+import com.bylazar.telemetry.JoinedTelemetry;
 import com.bylazar.telemetry.PanelsTelemetry;
-import com.bylazar.telemetry.TelemetryManager;
+import com.bylazar.configurables.annotations.Configurable;
 import com.qualcomm.robotcore.eventloop.opmode.LinearOpMode;
 import com.qualcomm.robotcore.eventloop.opmode.TeleOp;
 import com.qualcomm.robotcore.hardware.DcMotor;
@@ -45,13 +45,15 @@ public class TurretPidTest extends LinearOpMode {
 
     @Override
     public void runOpMode() {
+        // Every telemetry line goes to both the Driver Station and Panels.
+        telemetry = new JoinedTelemetry(PanelsTelemetry.INSTANCE.getFtcTelemetry(), telemetry);
+
         DcMotorEx turret = hardwareMap.get(DcMotorEx.class, Shooter.TURRET_NAME);
         turret.setMode(DcMotor.RunMode.STOP_AND_RESET_ENCODER);
         turret.setMode(DcMotor.RunMode.RUN_WITHOUT_ENCODER);
         turret.setZeroPowerBehavior(DcMotor.ZeroPowerBehavior.BRAKE);
 
         PidController pid = new PidController(0, 0, 0);
-        TelemetryManager panels = PanelsTelemetry.INSTANCE.getTelemetry();
 
         telemetry.addLine(String.format("Turret must be at %.0f deg (TURRET_START_DEG) right now.",
                 Shooter.TURRET_START_DEG));
@@ -135,11 +137,11 @@ public class TurretPidTest extends LinearOpMode {
             telemetry.addLine("TURRET_KI = " + fmt(Shooter.TURRET_KI) + ";");
             telemetry.addLine("TURRET_KD = " + fmt(Shooter.TURRET_KD) + ";");
             telemetry.addLine("TURRET_MAX_POWER = " + fmt(Shooter.TURRET_MAX_POWER) + ";");
+            telemetry.addLine();
+            // Plain numbers for the Panels graph.
+            telemetry.addData("target", target);
+            telemetry.addData("angle", angle);
             telemetry.update();
-
-            panels.addData("target", target);
-            panels.addData("angle", angle);
-            panels.update();
         }
         turret.setPower(0);
     }

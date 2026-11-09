@@ -1,8 +1,8 @@
 package org.firstinspires.ftc.teamcode.OpModes.ComponentTest.shooter;
 
-import com.bylazar.configurables.annotations.Configurable;
+import com.bylazar.telemetry.JoinedTelemetry;
 import com.bylazar.telemetry.PanelsTelemetry;
-import com.bylazar.telemetry.TelemetryManager;
+import com.bylazar.configurables.annotations.Configurable;
 import com.qualcomm.robotcore.eventloop.opmode.LinearOpMode;
 import com.qualcomm.robotcore.eventloop.opmode.TeleOp;
 import com.qualcomm.robotcore.hardware.DcMotor;
@@ -47,6 +47,9 @@ public class FlywheelPidTest extends LinearOpMode {
 
     @Override
     public void runOpMode() {
+        // Every telemetry line goes to both the Driver Station and Panels.
+        telemetry = new JoinedTelemetry(PanelsTelemetry.INSTANCE.getFtcTelemetry(), telemetry);
+
         left = hardwareMap.get(DcMotorEx.class, Shooter.LEFT_FLYWHEEL_NAME);
         right = hardwareMap.get(DcMotorEx.class, Shooter.RIGHT_FLYWHEEL_NAME);
         left.setMode(DcMotor.RunMode.RUN_WITHOUT_ENCODER);
@@ -61,7 +64,6 @@ public class FlywheelPidTest extends LinearOpMode {
         leftPid.setOutputLimits(-1, 1);
         rightPid.setOutputLimits(-1, 1);
 
-        TelemetryManager panels = PanelsTelemetry.INSTANCE.getTelemetry();
 
         telemetry.addLine("Shooter 2: Flywheel PID. Keep hands clear.");
         telemetry.addLine("Change gains in Panels under \"Shooter\".");
@@ -176,12 +178,12 @@ public class FlywheelPidTest extends LinearOpMode {
             telemetry.addLine("FLYWHEEL_KI = " + fmt(Shooter.FLYWHEEL_KI) + ";");
             telemetry.addLine("FLYWHEEL_KD = " + fmt(Shooter.FLYWHEEL_KD) + ";");
             telemetry.addLine("FLYWHEEL_KF = " + fmt(Shooter.FLYWHEEL_KF) + ";");
+            telemetry.addLine();
+            // Plain numbers for the Panels graph.
+            telemetry.addData("target", on ? target : 0);
+            telemetry.addData("left", l);
+            telemetry.addData("right", r);
             telemetry.update();
-
-            panels.addData("target", on ? target : 0);
-            panels.addData("left", l);
-            panels.addData("right", r);
-            panels.update();
         }
         left.setPower(0);
         right.setPower(0);

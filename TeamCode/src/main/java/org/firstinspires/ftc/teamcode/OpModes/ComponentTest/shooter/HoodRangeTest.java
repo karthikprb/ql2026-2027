@@ -1,5 +1,7 @@
 package org.firstinspires.ftc.teamcode.OpModes.ComponentTest.shooter;
 
+import com.bylazar.telemetry.JoinedTelemetry;
+import com.bylazar.telemetry.PanelsTelemetry;
 import com.qualcomm.robotcore.eventloop.opmode.LinearOpMode;
 import com.qualcomm.robotcore.eventloop.opmode.TeleOp;
 import com.qualcomm.robotcore.hardware.Servo;
@@ -29,6 +31,9 @@ public class HoodRangeTest extends LinearOpMode {
 
     @Override
     public void runOpMode() {
+        // Every telemetry line goes to both the Driver Station and Panels.
+        telemetry = new JoinedTelemetry(PanelsTelemetry.INSTANCE.getFtcTelemetry(), telemetry);
+
         Servo hood = hardwareMap.get(Servo.class, Shooter.HOOD_NAME);
 
         telemetry.addLine("Shooter 3: Hood Range. Hood won't move until you press a button.");
