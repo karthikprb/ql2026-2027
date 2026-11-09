@@ -101,7 +101,7 @@ public class Shooter {
     public static double GOAL_Z = 43.95;              // PLACEHOLDER: HIVE pivot axis height. Measure the up-facing CELL opening.
     public static double SHOOTER_EXIT_HEIGHT = 12.0;  // PLACEHOLDER: height of the ball leaving the shooter, inches above tiles
 
-    // Field centre is (72, 72). Blue HIVE is on the +x half, red on the -x half (PLACEHOLDER).
+    // Field center is (72, 72). Blue HIVE is on the +x half, red on the -x half (PLACEHOLDER).
     // "Far" = away from the audience (+y), "Near" = audience side (-y).
     public static Goal BLUE_FAR  = new Goal("Blue far",  84, 81.4, GOAL_Z);
     public static Goal BLUE_NEAR = new Goal("Blue near", 84, 62.6, GOAL_Z);

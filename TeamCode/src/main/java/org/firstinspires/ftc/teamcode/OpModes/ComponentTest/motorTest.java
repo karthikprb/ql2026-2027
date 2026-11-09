@@ -15,7 +15,7 @@ public class motorTest extends LinearOpMode {
 
     @Override
     public void runOpMode() throws InterruptedException {
-        motor = new CacheMotor(hardwareMap,"motor");
+        motor = new CacheMotor(hardwareMap,"front_left");
         gamepadEx = new GamepadEx(gamepad1);
         waitForStart();
 
