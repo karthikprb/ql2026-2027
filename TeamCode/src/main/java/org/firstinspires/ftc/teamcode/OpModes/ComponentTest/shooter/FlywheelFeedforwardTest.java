@@ -85,8 +85,7 @@ public class FlywheelFeedforwardTest extends LinearOpMode {
 
             telemetry.addLine("MANUAL  (A on/off, dpad power, X sweep)");
             telemetry.addData("Power", "%.2f  %s", power, on ? "ON" : "off");
-            telemetry.addData("Left RPM", "%.0f", leftRpm());
-            telemetry.addData("Right RPM", "%.0f", rightRpm());
+            addEncoderLines(on ? power : 0);
             telemetry.addLine();
             telemetry.addLine("Check by eye: both wheels should throw a ball OUT of the robot.");
             telemetry.addLine("Right wheel wrong way -> flip RIGHT_FLYWHEEL_REVERSED.");
@@ -118,8 +117,8 @@ public class FlywheelFeedforwardTest extends LinearOpMode {
                 }
                 telemetry.addLine("SWEEP running, keep clear");
                 telemetry.addData("Step", "%d of %d   power %.2f", i + 1, SWEEP_POWERS.length, p);
-                telemetry.addData("Left / Right RPM", "%.0f / %.0f", l, r);
                 telemetry.addData("Phase", timer.seconds() < SETTLE_SEC ? "settling" : "measuring");
+                addEncoderLines(p);
                 telemetry.update();
             }
             out[i][0] = n > 0 ? sumL / n : 0;
@@ -164,6 +163,27 @@ public class FlywheelFeedforwardTest extends LinearOpMode {
         telemetry.addLine();
         telemetry.addLine("If full-power RPM is far from the motor's rated speed,");
         telemetry.addLine("FLYWHEEL_TICKS_PER_REV is probably wrong (28 = bare motor).");
+    }
+
+    /**
+     * RPM plus the raw encoder count and port of each motor. If the count stays at 0 while
+     * a wheel is clearly spinning, that motor's encoder isn't being read: check the encoder
+     * cable is plugged into the SAME port number as the motor's power cable.
+     * RPM values are plain numbers so Panels can graph them.
+     */
+    private void addEncoderLines(double commandedPower) {
+        double l = leftRpm(), r = rightRpm();
+        telemetry.addData("leftRpm", l);
+        telemetry.addData("rightRpm", r);
+        telemetry.addData("power", commandedPower);
+        telemetry.addData("Left encoder count / port", "%d / %d",
+                left.getCurrentPosition(), left.getPortNumber());
+        telemetry.addData("Right encoder count / port", "%d / %d",
+                right.getCurrentPosition(), right.getPortNumber());
+        if (commandedPower > 0.2) {
+            if (Math.abs(l) < 50) telemetry.addLine("LEFT encoder not reading: check its encoder cable/port.");
+            if (Math.abs(r) < 50) telemetry.addLine("RIGHT encoder not reading: check its encoder cable/port.");
+        }
     }
 
     private void setPower(double p) {
