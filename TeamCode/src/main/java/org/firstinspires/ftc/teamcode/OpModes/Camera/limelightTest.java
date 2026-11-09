@@ -9,8 +9,10 @@ import com.qualcomm.robotcore.eventloop.opmode.TeleOp;
 
 import org.firstinspires.ftc.robotcore.external.navigation.AngleUnit;
 import org.firstinspires.ftc.robotcore.external.navigation.Pose3D;
-import org.firstinspires.ftc.teamcode.Components.GoBildaPinpointDriver;
 import org.firstinspires.ftc.teamcode.Components.LimelightTagLocalizer;
+import org.firstinspires.ftc.teamcode.follower.hardware.PinpointLocalizer;
+import org.firstinspires.ftc.teamcode.follower.math.Pose;
+import org.firstinspires.ftc.teamcode.pedroPathing.Constants;
 
 /*
  * Shows the robot's offset from an AprilTag, plus the field-pose (MegaTag) values
@@ -44,9 +46,9 @@ public class limelightTest extends LinearOpMode {
                 new LimelightTagLocalizer(hardwareMap, "limelight", PIPELINE);
         Limelight3A limelight = tagLocalizer.getLimelight();
 
-        GoBildaPinpointDriver odo = hardwareMap.get(GoBildaPinpointDriver.class, "odo");
-        odo.init();
-        odo.resetPosAndIMU();
+        // Pedro's Pinpoint, set up from Constants (pod offsets, directions, units).
+        PinpointLocalizer odo = new PinpointLocalizer(hardwareMap, Constants.localizerConfig);
+        odo.setPose(Pose.zero());
 
         tagLocalizer.start();
 
@@ -56,14 +58,16 @@ public class limelightTest extends LinearOpMode {
         waitForStart();
         if (isStopRequested()) return;
 
+        odo.setPose(Pose.zero());
+
         while (opModeIsActive()) {
 
             odo.update();
 
-            // This copy of the Pinpoint driver adds 90 degrees inside getHeading(),
-            // so remove it here. MegaTag 2 also needs this to be a FIELD heading
-            // (CCW positive), not "0 = however the robot faced at init".
-            double yawDeg = Math.toDegrees(odo.getHeading()) - 90.0;
+            // Heading is 0 where the robot faced at START, counter-clockwise positive.
+            // MegaTag 2 really wants a FIELD heading: to get one, setPose() above with
+            // the robot's real starting heading instead of Pose.zero().
+            double yawDeg = Math.toDegrees(odo.pose().heading());
             limelight.updateRobotOrientation(yawDeg);
 
             // ---- Tag-relative offset (what you want for localizing to a tag) ----
