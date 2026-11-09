@@ -1,5 +1,6 @@
 package org.firstinspires.ftc.teamcode.OpModes.ComponentTest.shooter;
 
+import com.bylazar.configurables.annotations.Configurable;
 import com.qualcomm.robotcore.eventloop.opmode.LinearOpMode;
 import com.qualcomm.robotcore.eventloop.opmode.TeleOp;
 import com.qualcomm.robotcore.hardware.DcMotor;
@@ -26,12 +27,13 @@ import org.firstinspires.ftc.teamcode.Components.Shooter;
  *   Left stick X = turn the turret
  *   Right bumper = hold for slow
  */
+@Configurable
 @TeleOp(name = "Shooter 4: Turret Setup", group = "Shooter")
 public class TurretSetupTest extends LinearOpMode {
 
-    private static final double MAX_POWER = 0.35;
-    private static final double SLOW_POWER = 0.12;
-    private static final double LIMIT_MARGIN_DEG = 3;   // stay this far off each hard stop
+    public static double MAX_POWER = 0.35;
+    public static double SLOW_POWER = 0.12;
+    public static double LIMIT_MARGIN_DEG = 3;   // stay this far off each hard stop
 
     @Override
     public void runOpMode() {

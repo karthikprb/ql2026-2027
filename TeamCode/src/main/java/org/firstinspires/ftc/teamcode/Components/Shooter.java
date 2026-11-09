@@ -1,5 +1,6 @@
 package org.firstinspires.ftc.teamcode.Components;
 
+import com.bylazar.configurables.annotations.Configurable;
 import com.qualcomm.robotcore.hardware.DcMotor;
 import com.qualcomm.robotcore.hardware.DcMotorEx;
 import com.qualcomm.robotcore.hardware.DcMotorSimple;
@@ -26,7 +27,13 @@ import org.firstinspires.ftc.teamcode.follower.utils.Angle;
  * In both cases call update() once per loop so the PIDs run, and handleGamepad(gamepad2)
  * if you want the driver to be able to trim RPM / hood / turret with the dpad and bumpers.
  * The trims are added on top of whatever aimAt() or the setters asked for.
+ *
+ * @Configurable: every public static number below shows up under "Shooter" in Panels and
+ * can be changed while an OpMode runs. The PID gains are re-read every update(), so a
+ * change takes effect straight away. Panels changes are NOT saved: copy the numbers you
+ * like back into this file. (Motor directions and names only apply at the next init.)
  */
+@Configurable
 public class Shooter {
 
     // =================================================================
@@ -309,6 +316,12 @@ public class Shooter {
         double dt = loopTimer.seconds();
         loopTimer.reset();
         if (dt <= 0) return;
+
+        // Re-read the gains every loop so changes made in Panels apply right away.
+        leftPid.setGains(FLYWHEEL_KP, FLYWHEEL_KI, FLYWHEEL_KD);
+        rightPid.setGains(FLYWHEEL_KP, FLYWHEEL_KI, FLYWHEEL_KD);
+        turretPid.setGains(TURRET_KP, TURRET_KI, TURRET_KD);
+        turretPid.setOutputLimits(-TURRET_MAX_POWER, TURRET_MAX_POWER);
 
         // ---- flywheels ----
         double rpmGoal = commandedRpm();

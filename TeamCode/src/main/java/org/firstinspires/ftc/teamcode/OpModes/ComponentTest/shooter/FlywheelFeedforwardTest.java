@@ -1,5 +1,6 @@
 package org.firstinspires.ftc.teamcode.OpModes.ComponentTest.shooter;
 
+import com.bylazar.configurables.annotations.Configurable;
 import com.qualcomm.robotcore.eventloop.opmode.LinearOpMode;
 import com.qualcomm.robotcore.eventloop.opmode.TeleOp;
 import com.qualcomm.robotcore.hardware.DcMotor;
@@ -27,13 +28,14 @@ import org.firstinspires.ftc.teamcode.Components.Shooter;
  * The sweep runs the flywheels at 0.3, 0.4 ... 1.0 power, waits for each to settle,
  * then averages the RPM. Keep hands and balls clear. B after the sweep goes back to manual.
  */
+@Configurable
 @TeleOp(name = "Shooter 1: Flywheel kF", group = "Shooter")
 public class FlywheelFeedforwardTest extends LinearOpMode {
 
     private static final double[] SWEEP_POWERS = {0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9, 1.0};
-    private static final double SETTLE_SEC = 2.5;   // time to reach steady speed at each power
-    private static final double SAMPLE_SEC = 1.0;   // time spent averaging after that
-    private static final double MAX_RPM_HEADROOM = 0.9;  // leave room for the PID to push harder after a shot
+    public static double SETTLE_SEC = 2.5;   // time to reach steady speed at each power
+    public static double SAMPLE_SEC = 1.0;   // time spent averaging after that
+    public static double MAX_RPM_HEADROOM = 0.9;  // leave room for the PID to push harder after a shot
 
     private DcMotorEx left, right;
 
