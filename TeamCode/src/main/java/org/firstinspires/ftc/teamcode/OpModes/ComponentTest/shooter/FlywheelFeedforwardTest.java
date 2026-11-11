@@ -197,5 +197,6 @@ public class FlywheelFeedforwardTest extends LinearOpMode {
 
     private double rightRpm() {
         return right.getVelocity() / Shooter.FLYWHEEL_TICKS_PER_REV * 60.0;
+        
     }
 }
