@@ -18,7 +18,7 @@ import com.qualcomm.robotcore.hardware.Gamepad;
  * The "was pressed" checks are done here instead of with the SDK's own aWasPressed(),
  * because the combined gamepad is a fresh copy every loop and has no press history.
  */
-class PanelsPad {
+public class PanelsPad {
 
     private final Gamepad driverStation;
     private final GamepadManager panels;
@@ -26,13 +26,13 @@ class PanelsPad {
     private Gamepad now = new Gamepad();
     private boolean a, b, x, y, up, down, left, right, lb, rb;   // last loop's buttons
 
-    PanelsPad(Gamepad driverStation, GamepadManager panels) {
+    public PanelsPad(Gamepad driverStation, GamepadManager panels) {
         this.driverStation = driverStation;
         this.panels = panels;
     }
 
     /** Reads both gamepads. Call once at the top of every loop, before any checks. */
-    void update() {
+    public void update() {
         a = now.a; b = now.b; x = now.x; y = now.y;
         up = now.dpad_up; down = now.dpad_down; left = now.dpad_left; right = now.dpad_right;
         lb = now.left_bumper; rb = now.right_bumper;
@@ -40,18 +40,18 @@ class PanelsPad {
     }
 
     /** The combined gamepad this loop, for sticks, triggers and held buttons. */
-    Gamepad raw() {
+    public Gamepad raw() {
         return now;
     }
 
-    boolean aWasPressed() { return now.a && !a; }
-    boolean bWasPressed() { return now.b && !b; }
-    boolean xWasPressed() { return now.x && !x; }
-    boolean yWasPressed() { return now.y && !y; }
-    boolean dpadUpWasPressed() { return now.dpad_up && !up; }
-    boolean dpadDownWasPressed() { return now.dpad_down && !down; }
-    boolean dpadLeftWasPressed() { return now.dpad_left && !left; }
-    boolean dpadRightWasPressed() { return now.dpad_right && !right; }
-    boolean leftBumperWasPressed() { return now.left_bumper && !lb; }
-    boolean rightBumperWasPressed() { return now.right_bumper && !rb; }
+    public boolean aWasPressed() { return now.a && !a; }
+    public boolean bWasPressed() { return now.b && !b; }
+    public boolean xWasPressed() { return now.x && !x; }
+    public boolean yWasPressed() { return now.y && !y; }
+    public boolean dpadUpWasPressed() { return now.dpad_up && !up; }
+    public boolean dpadDownWasPressed() { return now.dpad_down && !down; }
+    public boolean dpadLeftWasPressed() { return now.dpad_left && !left; }
+    public boolean dpadRightWasPressed() { return now.dpad_right && !right; }
+    public boolean leftBumperWasPressed() { return now.left_bumper && !lb; }
+    public boolean rightBumperWasPressed() { return now.right_bumper && !rb; }
 }
