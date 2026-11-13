@@ -1,5 +1,6 @@
 package org.firstinspires.ftc.teamcode.OpModes.ComponentTest.shooter;
 
+import com.bylazar.gamepad.PanelsGamepad;
 import com.bylazar.telemetry.JoinedTelemetry;
 import com.bylazar.telemetry.PanelsTelemetry;
 import com.bylazar.configurables.annotations.Configurable;
@@ -85,6 +86,9 @@ public class ShotTableTest extends LinearOpMode {
     public void runOpMode() {
         // Every telemetry line goes to both the Driver Station and Panels.
         telemetry = new JoinedTelemetry(PanelsTelemetry.INSTANCE.getFtcTelemetry(), telemetry);
+        // Gamepads work from the Driver Station or a controller plugged into the Panels computer.
+        PanelsPad pad1 = new PanelsPad(gamepad1, PanelsGamepad.INSTANCE.getFirstManager());
+        PanelsPad pad2 = new PanelsPad(gamepad2, PanelsGamepad.INSTANCE.getSecondManager());
 
         Shooter shooter = new Shooter(hardwareMap);
         intake = new Intake(hardwareMap);
@@ -94,8 +98,10 @@ public class ShotTableTest extends LinearOpMode {
         localizer.setPose(startPose());
 
         while (opModeInInit()) {
-            if (gamepad1.xWasPressed() || gamepad2.xWasPressed()) shooter.setAlliance(Shooter.Alliance.BLUE);
-            if (gamepad1.bWasPressed() || gamepad2.bWasPressed()) shooter.setAlliance(Shooter.Alliance.RED);
+            pad1.update();
+            pad2.update();
+            if (pad1.xWasPressed() || pad2.xWasPressed()) shooter.setAlliance(Shooter.Alliance.BLUE);
+            if (pad1.bWasPressed() || pad2.bWasPressed()) shooter.setAlliance(Shooter.Alliance.RED);
             telemetry.addData("Alliance", "%s   (X = blue, B = red)", shooter.getAlliance());
             telemetry.addData("Start pose", "%.1f, %.1f, %.0f deg",
                     START_X, START_Y, START_HEADING_DEG);
@@ -114,16 +120,18 @@ public class ShotTableTest extends LinearOpMode {
         boolean loadedStart = false;
 
         while (opModeIsActive()) {
+            pad1.update();
+            pad2.update();
             localizer.update();
             Pose pose = localizer.pose();
 
             // ---------- driver ----------
-            if (gamepad1.aWasPressed()) localizer.setPose(startPose());
-            double scale = gamepad1.right_bumper ? 0.5 : 1.0;
+            if (pad1.aWasPressed()) localizer.setPose(startPose());
+            double scale = pad1.raw().right_bumper ? 0.5 : 1.0;
             drive.drive(new DrivePowers(
-                    -gamepad1.left_stick_y * scale,
-                    -gamepad1.left_stick_x * scale,
-                    -gamepad1.right_stick_x * scale), true);
+                    -pad1.raw().left_stick_y * scale,
+                    -pad1.raw().left_stick_x * scale,
+                    -pad1.raw().right_stick_x * scale), true);
 
             // ---------- aim the turret, then use our own RPM / hood ----------
             shooter.aimAt(pose);
@@ -135,22 +143,22 @@ public class ShotTableTest extends LinearOpMode {
                 loadedStart = true;
             }
 
-            if (gamepad2.aWasPressed()) flywheelOn = !flywheelOn;
-            if (gamepad2.dpadUpWasPressed()) rpm += RPM_STEP;
-            if (gamepad2.dpadDownWasPressed()) rpm -= RPM_STEP;
-            if (gamepad2.dpadRightWasPressed()) hood += HOOD_STEP;
-            if (gamepad2.dpadLeftWasPressed()) hood -= HOOD_STEP;
-            if (gamepad2.rightBumperWasPressed()) turretTrim += TURRET_TRIM_STEP_DEG;
-            if (gamepad2.leftBumperWasPressed()) turretTrim -= TURRET_TRIM_STEP_DEG;
+            if (pad2.aWasPressed()) flywheelOn = !flywheelOn;
+            if (pad2.dpadUpWasPressed()) rpm += RPM_STEP;
+            if (pad2.dpadDownWasPressed()) rpm -= RPM_STEP;
+            if (pad2.dpadRightWasPressed()) hood += HOOD_STEP;
+            if (pad2.dpadLeftWasPressed()) hood -= HOOD_STEP;
+            if (pad2.rightBumperWasPressed()) turretTrim += TURRET_TRIM_STEP_DEG;
+            if (pad2.leftBumperWasPressed()) turretTrim -= TURRET_TRIM_STEP_DEG;
             rpm = Range.clip(rpm, 0, Shooter.FLYWHEEL_MAX_RPM);
             hood = Range.clip(hood, Shooter.HOOD_MIN, Shooter.HOOD_MAX);
 
-            if (gamepad2.yWasPressed()) points.add(new Point(distance, rpm, hood, turretTrim));
-            if (gamepad2.xWasPressed() && !points.isEmpty()) points.remove(points.size() - 1);
+            if (pad2.yWasPressed()) points.add(new Point(distance, rpm, hood, turretTrim));
+            if (pad2.xWasPressed() && !points.isEmpty()) points.remove(points.size() - 1);
 
             double[] rpmFit = fit(points, true);
             double[] hoodFit = fit(points, false);
-            if (gamepad2.bWasPressed()) {
+            if (pad2.bWasPressed()) {
                 if (rpmFit != null) rpm = rpmFit[0] + rpmFit[1] * distance;
                 if (hoodFit != null) hood = hoodFit[0] + hoodFit[1] * distance;
                 rpm = Range.clip(rpm, 0, Shooter.FLYWHEEL_MAX_RPM);
@@ -162,7 +170,7 @@ public class ShotTableTest extends LinearOpMode {
             shooter.setHoodPosition(hood);
             shooter.update();
 
-            feed(gamepad2.right_trigger > 0.3);
+            feed(pad2.raw().right_trigger > 0.3);
 
             // ---------- telemetry ----------
             telemetry.addData("Goal", shooter.getActiveGoal().name);

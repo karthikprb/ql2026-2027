@@ -1,5 +1,6 @@
 package org.firstinspires.ftc.teamcode.OpModes.ComponentTest.shooter;
 
+import com.bylazar.gamepad.PanelsGamepad;
 import com.bylazar.telemetry.JoinedTelemetry;
 import com.bylazar.telemetry.PanelsTelemetry;
 import com.bylazar.configurables.annotations.Configurable;
@@ -47,6 +48,8 @@ public class TurretPidTest extends LinearOpMode {
     public void runOpMode() {
         // Every telemetry line goes to both the Driver Station and Panels.
         telemetry = new JoinedTelemetry(PanelsTelemetry.INSTANCE.getFtcTelemetry(), telemetry);
+        // Gamepad works from the Driver Station or a controller plugged into the Panels computer.
+        PanelsPad pad1 = new PanelsPad(gamepad1, PanelsGamepad.INSTANCE.getFirstManager());
 
         DcMotorEx turret = hardwareMap.get(DcMotorEx.class, Shooter.TURRET_NAME);
         turret.setMode(DcMotor.RunMode.STOP_AND_RESET_ENCODER);
@@ -74,18 +77,19 @@ public class TurretPidTest extends LinearOpMode {
         boolean settled = true;
 
         while (opModeIsActive()) {
+            pad1.update();
             double dt = loopTimer.seconds();
             loopTimer.reset();
 
             double forward = Shooter.TURRET_FORWARD_DEG;
             double newTarget = target;
-            if (gamepad1.aWasPressed()) {
+            if (pad1.aWasPressed()) {
                 newTarget = swingRight ? forward + STEP_DEG : forward - STEP_DEG;
                 swingRight = !swingRight;
             }
-            if (gamepad1.bWasPressed()) newTarget = forward;
-            if (gamepad1.dpadUpWasPressed()) STEP_DEG = Math.min(STEP_DEG + 5, 90);
-            if (gamepad1.dpadDownWasPressed()) STEP_DEG = Math.max(STEP_DEG - 5, 5);
+            if (pad1.bWasPressed()) newTarget = forward;
+            if (pad1.dpadUpWasPressed()) STEP_DEG = Math.min(STEP_DEG + 5, 90);
+            if (pad1.dpadDownWasPressed()) STEP_DEG = Math.max(STEP_DEG - 5, 5);
             newTarget = Range.clip(newTarget, Shooter.TURRET_MIN_DEG, Shooter.TURRET_MAX_DEG);
 
             double angle = Shooter.TURRET_START_DEG

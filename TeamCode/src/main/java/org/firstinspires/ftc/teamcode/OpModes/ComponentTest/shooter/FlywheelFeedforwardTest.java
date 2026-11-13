@@ -1,5 +1,6 @@
 package org.firstinspires.ftc.teamcode.OpModes.ComponentTest.shooter;
 
+import com.bylazar.gamepad.PanelsGamepad;
 import com.bylazar.telemetry.JoinedTelemetry;
 import com.bylazar.telemetry.PanelsTelemetry;
 import com.bylazar.configurables.annotations.Configurable;
@@ -45,6 +46,8 @@ public class FlywheelFeedforwardTest extends LinearOpMode {
     public void runOpMode() {
         // Every telemetry line goes to both the Driver Station and Panels.
         telemetry = new JoinedTelemetry(PanelsTelemetry.INSTANCE.getFtcTelemetry(), telemetry);
+        // Gamepad works from the Driver Station or a controller plugged into the Panels computer.
+        PanelsPad pad1 = new PanelsPad(gamepad1, PanelsGamepad.INSTANCE.getFirstManager());
 
         left = hardwareMap.get(DcMotorEx.class, Shooter.LEFT_FLYWHEEL_NAME);
         right = hardwareMap.get(DcMotorEx.class, Shooter.RIGHT_FLYWHEEL_NAME);
@@ -65,17 +68,18 @@ public class FlywheelFeedforwardTest extends LinearOpMode {
         double[][] results = null;   // [step][0 = left rpm, 1 = right rpm]
 
         while (opModeIsActive()) {
+            pad1.update();
             if (results != null) {
                 showResults(results);
-                if (gamepad1.bWasPressed()) results = null;
+                if (pad1.bWasPressed()) results = null;
                 telemetry.update();
                 continue;
             }
 
-            if (gamepad1.aWasPressed()) on = !on;
-            if (gamepad1.dpadUpWasPressed()) power = Range.clip(power + 0.05, 0, 1);
-            if (gamepad1.dpadDownWasPressed()) power = Range.clip(power - 0.05, 0, 1);
-            if (gamepad1.xWasPressed()) {
+            if (pad1.aWasPressed()) on = !on;
+            if (pad1.dpadUpWasPressed()) power = Range.clip(power + 0.05, 0, 1);
+            if (pad1.dpadDownWasPressed()) power = Range.clip(power - 0.05, 0, 1);
+            if (pad1.xWasPressed()) {
                 results = runSweep();
                 on = false;
                 continue;

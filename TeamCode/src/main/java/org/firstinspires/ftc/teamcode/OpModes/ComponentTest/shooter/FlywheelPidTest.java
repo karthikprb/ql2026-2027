@@ -1,5 +1,6 @@
 package org.firstinspires.ftc.teamcode.OpModes.ComponentTest.shooter;
 
+import com.bylazar.gamepad.PanelsGamepad;
 import com.bylazar.telemetry.JoinedTelemetry;
 import com.bylazar.telemetry.PanelsTelemetry;
 import com.bylazar.configurables.annotations.Configurable;
@@ -49,6 +50,8 @@ public class FlywheelPidTest extends LinearOpMode {
     public void runOpMode() {
         // Every telemetry line goes to both the Driver Station and Panels.
         telemetry = new JoinedTelemetry(PanelsTelemetry.INSTANCE.getFtcTelemetry(), telemetry);
+        // Gamepad works from the Driver Station or a controller plugged into the Panels computer.
+        PanelsPad pad1 = new PanelsPad(gamepad1, PanelsGamepad.INSTANCE.getFirstManager());
 
         left = hardwareMap.get(DcMotorEx.class, Shooter.LEFT_FLYWHEEL_NAME);
         right = hardwareMap.get(DcMotorEx.class, Shooter.RIGHT_FLYWHEEL_NAME);
@@ -89,17 +92,18 @@ public class FlywheelPidTest extends LinearOpMode {
         ElapsedTime dipTimer = new ElapsedTime();
 
         while (opModeIsActive()) {
+            pad1.update();
             double dt = loopTimer.seconds();
             loopTimer.reset();
 
             // ---------- buttons ----------
             boolean restart = false;
-            if (gamepad1.aWasPressed()) {
+            if (pad1.aWasPressed()) {
                 on = !on;
                 restart = true;
             }
-            if (gamepad1.dpadUpWasPressed()) TARGET_RPM += 250;
-            if (gamepad1.dpadDownWasPressed()) TARGET_RPM -= 250;
+            if (pad1.dpadUpWasPressed()) TARGET_RPM += 250;
+            if (pad1.dpadDownWasPressed()) TARGET_RPM -= 250;
             TARGET_RPM = Range.clip(TARGET_RPM, 0, Shooter.FLYWHEEL_MAX_RPM);
             double target = TARGET_RPM;
             if (target != lastTarget) restart = true;   // new target from dpad or Panels

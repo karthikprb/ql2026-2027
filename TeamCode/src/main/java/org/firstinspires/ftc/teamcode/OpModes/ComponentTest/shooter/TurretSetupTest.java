@@ -1,5 +1,6 @@
 package org.firstinspires.ftc.teamcode.OpModes.ComponentTest.shooter;
 
+import com.bylazar.gamepad.PanelsGamepad;
 import com.bylazar.telemetry.JoinedTelemetry;
 import com.bylazar.telemetry.PanelsTelemetry;
 import com.bylazar.configurables.annotations.Configurable;
@@ -41,6 +42,8 @@ public class TurretSetupTest extends LinearOpMode {
     public void runOpMode() {
         // Every telemetry line goes to both the Driver Station and Panels.
         telemetry = new JoinedTelemetry(PanelsTelemetry.INSTANCE.getFtcTelemetry(), telemetry);
+        // Gamepad works from the Driver Station or a controller plugged into the Panels computer.
+        PanelsPad pad1 = new PanelsPad(gamepad1, PanelsGamepad.INSTANCE.getFirstManager());
 
         DcMotorEx turret = hardwareMap.get(DcMotorEx.class, Shooter.TURRET_NAME);
         turret.setMode(DcMotor.RunMode.STOP_AND_RESET_ENCODER);
@@ -59,8 +62,9 @@ public class TurretSetupTest extends LinearOpMode {
         String powerVsEncoder = "move the turret to check";
 
         while (opModeIsActive()) {
-            double scale = gamepad1.right_bumper ? SLOW_POWER : MAX_POWER;
-            double power = gamepad1.left_stick_x * scale;
+            pad1.update();
+            double scale = pad1.raw().right_bumper ? SLOW_POWER : MAX_POWER;
+            double power = pad1.raw().left_stick_x * scale;
             turret.setPower(power);
 
             int raw = turret.getCurrentPosition();
@@ -76,14 +80,14 @@ public class TurretSetupTest extends LinearOpMode {
                         : "BACKWARDS: + power makes the count go DOWN. Shooter can't handle this yet.";
             }
 
-            if (gamepad1.aWasPressed()) {
+            if (pad1.aWasPressed()) {
                 zero = raw;
                 ticks = 0;
                 haveForward = true;
                 rightSide = leftLimit = rightLimit = null;
             }
             // Read every button each loop so an early press doesn't fire later.
-            boolean b = gamepad1.bWasPressed(), x = gamepad1.xWasPressed(), y = gamepad1.yWasPressed();
+            boolean b = pad1.bWasPressed(), x = pad1.xWasPressed(), y = pad1.yWasPressed();
             if (haveForward) {
                 if (b) rightSide = ticks;
                 if (x) leftLimit = ticks;

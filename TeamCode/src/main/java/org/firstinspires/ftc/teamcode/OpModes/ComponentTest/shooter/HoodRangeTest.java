@@ -1,5 +1,6 @@
 package org.firstinspires.ftc.teamcode.OpModes.ComponentTest.shooter;
 
+import com.bylazar.gamepad.PanelsGamepad;
 import com.bylazar.telemetry.JoinedTelemetry;
 import com.bylazar.telemetry.PanelsTelemetry;
 import com.qualcomm.robotcore.eventloop.opmode.LinearOpMode;
@@ -33,6 +34,8 @@ public class HoodRangeTest extends LinearOpMode {
     public void runOpMode() {
         // Every telemetry line goes to both the Driver Station and Panels.
         telemetry = new JoinedTelemetry(PanelsTelemetry.INSTANCE.getFtcTelemetry(), telemetry);
+        // Gamepad works from the Driver Station or a controller plugged into the Panels computer.
+        PanelsPad pad1 = new PanelsPad(gamepad1, PanelsGamepad.INSTANCE.getFirstManager());
 
         Servo hood = hardwareMap.get(Servo.class, Shooter.HOOD_NAME);
 
@@ -45,15 +48,16 @@ public class HoodRangeTest extends LinearOpMode {
         double down = Double.NaN, up = Double.NaN;
 
         while (opModeIsActive()) {
+            pad1.update();
             double before = position;
-            if (gamepad1.dpadUpWasPressed()) position += 0.005;
-            if (gamepad1.dpadDownWasPressed()) position -= 0.005;
-            if (gamepad1.rightBumperWasPressed()) position += 0.05;
-            if (gamepad1.leftBumperWasPressed()) position -= 0.05;
-            if (gamepad1.aWasPressed()) down = position;
-            if (gamepad1.bWasPressed()) up = position;
-            if (gamepad1.xWasPressed() && !Double.isNaN(down)) position = down;
-            if (gamepad1.yWasPressed() && !Double.isNaN(up)) position = up;
+            if (pad1.dpadUpWasPressed()) position += 0.005;
+            if (pad1.dpadDownWasPressed()) position -= 0.005;
+            if (pad1.rightBumperWasPressed()) position += 0.05;
+            if (pad1.leftBumperWasPressed()) position -= 0.05;
+            if (pad1.aWasPressed()) down = position;
+            if (pad1.bWasPressed()) up = position;
+            if (pad1.xWasPressed() && !Double.isNaN(down)) position = down;
+            if (pad1.yWasPressed() && !Double.isNaN(up)) position = up;
             position = Range.clip(position, 0, 1);
 
             if (position != before) moved = true;
