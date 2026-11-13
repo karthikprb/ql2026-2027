@@ -51,11 +51,11 @@ public class Shooter {
     // rev = one motor rev = 28 ticks. Free speed 6000 RPM.
     // If the gearing changes: ticks = 28 * (flywheel gear teeth / motor gear teeth).
     public static double FLYWHEEL_TICKS_PER_REV = 28;
-    public static double FLYWHEEL_MAX_RPM = 6000;          // free speed; set from "Shooter 1: Flywheel kF"
+    public static double FLYWHEEL_MAX_RPM = 2809;          // free speed; set from "Shooter 1: Flywheel kF"
     public static double FLYWHEEL_KP = 0.0003;             // power per RPM of error
     public static double FLYWHEEL_KI = 0.0;
     public static double FLYWHEEL_KD = 0.0;
-    public static double FLYWHEEL_KF = 1.0 / 6000.0;       // feedforward: power per RPM (~1/free-speed RPM to start)
+    public static double FLYWHEEL_KF = 3.607520e-04;       // feedforward: power per RPM (~1/free-speed RPM to start)
     public static double RPM_TOLERANCE = 75;               // "at speed" when both wheels are within this
     public static boolean RIGHT_FLYWHEEL_REVERSED = true;  // the two wheels usually spin opposite ways
 
