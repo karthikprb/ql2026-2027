@@ -46,7 +46,6 @@ public class BlueAuto extends LinearOpMode {
     private final PoseFactory p = PoseFactory.degrees();
 
     private final Pose start            = p.of(85, 132, 270);
-    private final Pose frontShoot       = p.of(85, 107, 270);
     private final Pose preIntake        = p.of(104.8, 133.6, 0);
     private final Pose postIntake       = p.of(128.8, 133.6, 0);   // 24 in forward of preIntake
     private final Pose intFlower        = p.of(94, 10.6, 270);
@@ -85,19 +84,16 @@ public class BlueAuto extends LinearOpMode {
     // =================================================================
     private List<Leg> route() {
         return Arrays.asList(
-                new Leg("Preload shot", line(start, frontShoot).constant(frontShoot))
-                        .onArrive(Action.SHOOT).waitAfter(1.5),
-
-                new Leg("To preIntake", line(frontShoot, preIntake).linear(frontShoot, preIntake))
+                new Leg("To preIntake", line(start, preIntake).linear(start, preIntake))
                         .at(0, Action.INTAKE).waitAfter(0.5),
 
                 new Leg("To postIntake", line(preIntake, postIntake).linear(preIntake, postIntake)),
 
-                new Leg("Back to shoot", line(postIntake, frontShoot).linear(postIntake, frontShoot))
+                new Leg("Back to start", line(postIntake, start).linear(postIntake, start))
                         .at(0, Action.STOP_INTAKE).onArrive(Action.SHOOT).waitAfter(1.5),
 
                 new Leg("To intFlower",
-                        curve(frontShoot, firstFloControl, secondFloControl, intFlower).linear(frontShoot, intFlower))
+                        curve(start, firstFloControl, secondFloControl, intFlower).linear(start, intFlower))
                         .at(0, Action.INTAKE).waitAfter(0.5).timeout(6.0),
 
                 new Leg("To backShoot", line(intFlower, backShoot).linear(intFlower, backShoot))
