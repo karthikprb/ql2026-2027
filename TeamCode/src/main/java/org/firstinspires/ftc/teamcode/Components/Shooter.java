@@ -135,7 +135,7 @@ public class Shooter {
     private final DcMotorEx leftFlywheel;
     private final DcMotorEx rightFlywheel;
     private final Servo hood;
-    private final DcMotorEx turret;
+    private final DcMotorEx turret;   // null when made with useTurret = false
 
     private final PidController leftPid = new PidController(FLYWHEEL_KP, FLYWHEEL_KI, FLYWHEEL_KD);
     private final PidController rightPid = new PidController(FLYWHEEL_KP, FLYWHEEL_KI, FLYWHEEL_KD);
@@ -156,11 +156,21 @@ public class Shooter {
     private Goal activeGoal = BLUE_FAR;
     private double lastDistanceToGoal = 0;
 
+    /** Shooter with the turret. */
     public Shooter(HardwareMap hardwareMap) {
+        this(hardwareMap, true);
+    }
+
+    /**
+     * useTurret = false leaves the turret out completely: it is never looked up in the
+     * hardware map (so it doesn't need to be in the robot config) and never commanded.
+     * Turret setters and trims are then ignored, and turretOnTarget() is always true.
+     */
+    public Shooter(HardwareMap hardwareMap, boolean useTurret) {
         leftFlywheel = hardwareMap.get(DcMotorEx.class, LEFT_FLYWHEEL_NAME);
         rightFlywheel = hardwareMap.get(DcMotorEx.class, RIGHT_FLYWHEEL_NAME);
         hood = hardwareMap.get(Servo.class, HOOD_NAME);
-        turret = hardwareMap.get(DcMotorEx.class, TURRET_NAME);
+        turret = useTurret ? hardwareMap.get(DcMotorEx.class, TURRET_NAME) : null;
 
         // We run our own PID, so the SDK's built-in velocity control is turned off.
         leftFlywheel.setMode(DcMotor.RunMode.RUN_WITHOUT_ENCODER);
@@ -172,10 +182,12 @@ public class Shooter {
 
         // The turret is wherever TURRET_START_DEG says it is at init; the count resets there.
         // The SDK does the position control: we only give it a target tick count and a power.
-        turret.setMode(DcMotor.RunMode.STOP_AND_RESET_ENCODER);
-        turret.setTargetPosition(0);   // must be set before switching to RUN_TO_POSITION
-        turret.setMode(DcMotor.RunMode.RUN_TO_POSITION);
-        turret.setZeroPowerBehavior(DcMotor.ZeroPowerBehavior.BRAKE);
+        if (turret != null) {
+            turret.setMode(DcMotor.RunMode.STOP_AND_RESET_ENCODER);
+            turret.setTargetPosition(0);   // must be set before switching to RUN_TO_POSITION
+            turret.setMode(DcMotor.RunMode.RUN_TO_POSITION);
+            turret.setZeroPowerBehavior(DcMotor.ZeroPowerBehavior.BRAKE);
+        }
 
         leftPid.setOutputLimits(-1, 1);
         rightPid.setOutputLimits(-1, 1);
@@ -302,8 +314,10 @@ public class Shooter {
         if (gamepad.dpadDownWasPressed()) rpmTrim -= RPM_STEP;
         if (gamepad.rightBumperWasPressed()) hoodTrim += HOOD_STEP;
         if (gamepad.leftBumperWasPressed()) hoodTrim -= HOOD_STEP;
-        if (gamepad.dpadRightWasPressed()) turretTrimDeg += TURRET_STEP_DEG;
-        if (gamepad.dpadLeftWasPressed()) turretTrimDeg -= TURRET_STEP_DEG;
+        if (turret != null) {
+            if (gamepad.dpadRightWasPressed()) turretTrimDeg += TURRET_STEP_DEG;
+            if (gamepad.dpadLeftWasPressed()) turretTrimDeg -= TURRET_STEP_DEG;
+        }
         if (gamepad.optionsWasPressed()) {
             rpmTrim = 0;
             hoodTrim = 0;
@@ -342,8 +356,10 @@ public class Shooter {
         hood.setPosition(commandedHood());
 
         // ---- turret ----
-        turret.setTargetPosition(turretTicksForDegrees(commandedTurretDeg()));
-        turret.setPower(Range.clip(TURRET_MAX_POWER, 0, 1));
+        if (turret != null) {
+            turret.setTargetPosition(turretTicksForDegrees(commandedTurretDeg()));
+            turret.setPower(Range.clip(TURRET_MAX_POWER, 0, 1));
+        }
     }
 
     /** Encoder count that puts the turret at the given angle. Inverse of getTurretDegrees(). */
@@ -376,13 +392,20 @@ public class Shooter {
         return rightFlywheel.getVelocity() / FLYWHEEL_TICKS_PER_REV * 60.0;
     }
 
+    /** Turret angle from the encoder. Without a turret this is just where it is told to be. */
     public double getTurretDegrees() {
+        if (turret == null) return commandedTurretDeg();
         return TURRET_START_DEG + TURRET_DIRECTION * turret.getCurrentPosition() / TURRET_TICKS_PER_DEG;
     }
 
-    /** Raw turret encoder count since init. */
+    /** Raw turret encoder count since init. 0 without a turret. */
     public int getTurretTicks() {
-        return turret.getCurrentPosition();
+        return turret == null ? 0 : turret.getCurrentPosition();
+    }
+
+    /** False when this Shooter was made with useTurret = false. */
+    public boolean hasTurret() {
+        return turret != null;
     }
 
     public boolean flywheelAtSpeed() {
@@ -393,6 +416,7 @@ public class Shooter {
     }
 
     public boolean turretOnTarget() {
+        if (turret == null) return true;
         return Math.abs(getTurretDegrees() - commandedTurretDeg()) < TURRET_TOLERANCE_DEG;
     }
 
