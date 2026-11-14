@@ -28,8 +28,8 @@ public class Intake {
     public static String MOTOR_NAME = "intakeMotor";
 
     // ---------------- servo positions (tune these) ----------------
-    public static double DROPDOWN_LOWERED = 0.0;
-    public static double DROPDOWN_RAISED = 0.5;
+    public static double DROPDOWN_LOWERED = 0.1;
+    public static double DROPDOWN_RAISED = 0.3;
 
     // ---------------- motor powers ----------------
     public static double INTAKE_POWER = 1.0;
