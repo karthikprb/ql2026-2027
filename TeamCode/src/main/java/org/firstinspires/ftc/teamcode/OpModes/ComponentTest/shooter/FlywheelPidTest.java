@@ -13,7 +13,6 @@ import com.qualcomm.robotcore.util.ElapsedTime;
 import com.qualcomm.robotcore.util.Range;
 
 import org.firstinspires.ftc.teamcode.Components.Shooter;
-import org.firstinspires.ftc.teamcode.Wrapper.BatteryVoltage;
 import org.firstinspires.ftc.teamcode.Wrapper.PidController;
 
 /**
@@ -25,9 +24,7 @@ import org.firstinspires.ftc.teamcode.Wrapper.PidController;
  * They are read every loop, so a change applies immediately. Panels doesn't save them:
  * copy the final numbers into Shooter.java. The target RPM is under "FlywheelPidTest".
  *
- * Same control as the Shooter class:
- *   power = (kF * target + PID(target - rpm)) * NOMINAL_VOLTAGE / battery voltage
- * Battery compensation is on by default; turn off VOLTAGE_COMPENSATION in Panels to compare.
+ * Same control as the Shooter class: power = kF * target + PID(target - rpm).
  *
  * Gamepad 1:
  *   A              = flywheels on / off (spin-up test)
@@ -69,7 +66,7 @@ public class FlywheelPidTest extends LinearOpMode {
         PidController rightPid = new PidController(0, 0, 0);
         leftPid.setOutputLimits(-1, 1);
         rightPid.setOutputLimits(-1, 1);
-        BatteryVoltage battery = new BatteryVoltage(hardwareMap);
+
 
         telemetry.addLine("Shooter 2: Flywheel PID. Keep hands clear.");
         telemetry.addLine("Change gains in Panels under \"Shooter\".");
@@ -130,14 +127,11 @@ public class FlywheelPidTest extends LinearOpMode {
             leftPid.setGains(Shooter.FLYWHEEL_KP, Shooter.FLYWHEEL_KI, Shooter.FLYWHEEL_KD);
             rightPid.setGains(Shooter.FLYWHEEL_KP, Shooter.FLYWHEEL_KI, Shooter.FLYWHEEL_KD);
 
-            double volts = battery.update(Shooter.VOLTAGE_READ_PERIOD_SEC, Shooter.VOLTAGE_FILTER_SEC);
-            double scale = Shooter.voltageScale(volts);
-
             double leftPower = 0, rightPower = 0;
             if (on && dt > 0) {
                 double ff = Shooter.FLYWHEEL_KF * target;
-                leftPower = Range.clip((ff + leftPid.update(target, l, dt)) * scale, 0, 1);
-                rightPower = Range.clip((ff + rightPid.update(target, r, dt)) * scale, 0, 1);
+                leftPower = Range.clip(ff + leftPid.update(target, l, dt), 0, 1);
+                rightPower = Range.clip(ff + rightPid.update(target, r, dt), 0, 1);
             }
             left.setPower(leftPower);
             right.setPower(rightPower);
@@ -177,12 +171,6 @@ public class FlywheelPidTest extends LinearOpMode {
             telemetry.addData("Left / Right RPM", "%.0f / %.0f", l, r);
             telemetry.addData("Left / Right power", "%.2f / %.2f", leftPower, rightPower);
             telemetry.addData("At speed", atSpeed);
-            telemetry.addData("Battery raw / filtered (V)", "%.2f / %.2f", battery.getRaw(), volts);
-            telemetry.addData("Voltage scale", "%.3f  %s", scale,
-                    Shooter.VOLTAGE_COMPENSATION ? "" : "(compensation OFF)");
-            if (leftPower >= 1 || rightPower >= 1) {
-                telemetry.addLine("Power maxed out: battery too low for this RPM.");
-            }
             telemetry.addLine();
             telemetry.addData("Spin-up time (s)", riseSec < 0 ? "-" : String.format("%.2f", riseSec));
             telemetry.addData("Overshoot (rpm)", "%.0f", overshoot);
@@ -199,8 +187,6 @@ public class FlywheelPidTest extends LinearOpMode {
             telemetry.addData("target", on ? target : 0);
             telemetry.addData("left", l);
             telemetry.addData("right", r);
-            telemetry.addData("batteryRaw", battery.getRaw());
-            telemetry.addData("batteryFiltered", volts);
             telemetry.update();
         }
         left.setPower(0);

@@ -13,18 +13,14 @@ import com.qualcomm.robotcore.util.ElapsedTime;
 import com.qualcomm.robotcore.util.Range;
 
 import org.firstinspires.ftc.teamcode.Components.Shooter;
-import org.firstinspires.ftc.teamcode.Wrapper.BatteryVoltage;
 
 /**
  * STEP 1 for the flywheel. Finds:
  *   RIGHT_FLYWHEEL_REVERSED  (by eye, in manual mode)
  *   FLYWHEEL_KF              (from the sweep)
  *   FLYWHEEL_MAX_RPM         (from the sweep)
- *   NOMINAL_VOLTAGE          (from the sweep: the battery voltage this kF belongs to)
  *
- * Plain motor power, no PID and no battery compensation, so these numbers only depend on
- * the motors. The battery voltage is recorded at every step and the kF fit is corrected for
- * how much it sagged, so paste kF and NOMINAL_VOLTAGE in together.
+ * Plain motor power, no PID, so these numbers only depend on the motors.
  *
  * Manual mode (gamepad 1):
  *   A          = flywheels on / off
@@ -45,7 +41,6 @@ public class FlywheelFeedforwardTest extends LinearOpMode {
     public static double MAX_RPM_HEADROOM = 0.9;  // leave room for the PID to push harder after a shot
 
     private DcMotorEx left, right;
-    private BatteryVoltage battery;
 
     @Override
     public void runOpMode() {
@@ -63,7 +58,6 @@ public class FlywheelFeedforwardTest extends LinearOpMode {
         right.setZeroPowerBehavior(DcMotor.ZeroPowerBehavior.FLOAT);
         right.setDirection(Shooter.RIGHT_FLYWHEEL_REVERSED
                 ? DcMotorSimple.Direction.REVERSE : DcMotorSimple.Direction.FORWARD);
-        battery = new BatteryVoltage(hardwareMap);
 
         telemetry.addLine("Shooter 1: Flywheel kF. Keep hands clear of the flywheels.");
         telemetry.update();
@@ -75,7 +69,6 @@ public class FlywheelFeedforwardTest extends LinearOpMode {
 
         while (opModeIsActive()) {
             pad1.update();
-            battery.update(Shooter.VOLTAGE_READ_PERIOD_SEC, Shooter.VOLTAGE_FILTER_SEC);
             if (results != null) {
                 showResults(results);
                 if (pad1.bWasPressed()) results = null;
@@ -108,32 +101,23 @@ public class FlywheelFeedforwardTest extends LinearOpMode {
         setPower(0);
     }
 
-    /**
-     * Runs every sweep power and returns, per step, the steady RPM of each wheel and the
-     * battery voltage while it ran. Returns early if stopped.
-     */
+    /** Runs every sweep power and returns the steady RPM of each wheel. Returns early if stopped. */
     private double[][] runSweep() {
-        double[][] out = new double[SWEEP_POWERS.length][3];   // [step][0 = left rpm, 1 = right rpm, 2 = volts]
+        double[][] out = new double[SWEEP_POWERS.length][2];
         ElapsedTime timer = new ElapsedTime();
 
         for (int i = 0; i < SWEEP_POWERS.length && opModeIsActive(); i++) {
             double p = SWEEP_POWERS[i];
             setPower(p);
             timer.reset();
-            double sumL = 0, sumR = 0, sumV = 0;
-            int n = 0, nV = 0;
+            double sumL = 0, sumR = 0;
+            int n = 0;
             while (opModeIsActive() && timer.seconds() < SETTLE_SEC + SAMPLE_SEC) {
-                battery.update(Shooter.VOLTAGE_READ_PERIOD_SEC, Shooter.VOLTAGE_FILTER_SEC);
                 double l = leftRpm(), r = rightRpm();
                 if (timer.seconds() > SETTLE_SEC) {
                     sumL += l;
                     sumR += r;
                     n++;
-                    double v = battery.getRaw();
-                    if (!Double.isNaN(v)) {
-                        sumV += v;
-                        nV++;
-                    }
                 }
                 telemetry.addLine("SWEEP running, keep clear");
                 telemetry.addData("Step", "%d of %d   power %.2f", i + 1, SWEEP_POWERS.length, p);
@@ -143,33 +127,17 @@ public class FlywheelFeedforwardTest extends LinearOpMode {
             }
             out[i][0] = n > 0 ? sumL / n : 0;
             out[i][1] = n > 0 ? sumR / n : 0;
-            out[i][2] = nV > 0 ? sumV / nV : 0;
         }
         setPower(0);
         return out;
     }
 
     private void showResults(double[][] r) {
-        // The battery sags more at higher power, so each step ran at a slightly different
-        // voltage. Pick the average as NOMINAL_VOLTAGE and convert every step's power to what
-        // it would have been at that voltage (same motor voltage = same RPM):
-        //   power at nominal = power * step volts / nominal volts
-        double vSum = 0;
-        int vN = 0;
-        for (double[] step : r) {
-            if (step[2] > 0) {
-                vSum += step[2];
-                vN++;
-            }
-        }
-        double nominal = vN > 0 ? vSum / vN : 0;
-
         // Shooter uses power = KF * rpm with no offset, so fit a line through zero:
         //   KF = sum(power * rpm) / sum(rpm^2)
         double pl = 0, ll = 0, pr = 0, rr = 0, pa = 0, aa = 0;
         for (int i = 0; i < r.length; i++) {
             double p = SWEEP_POWERS[i];
-            if (nominal > 0 && r[i][2] > 0) p *= r[i][2] / nominal;
             double avg = (r[i][0] + r[i][1]) / 2.0;
             pl += p * r[i][0]; ll += r[i][0] * r[i][0];
             pr += p * r[i][1]; rr += r[i][1] * r[i][1];
@@ -185,7 +153,7 @@ public class FlywheelFeedforwardTest extends LinearOpMode {
         telemetry.addLine("SWEEP DONE  (B = back to manual)");
         for (int i = 0; i < r.length; i++) {
             telemetry.addData(String.format("power %.1f", SWEEP_POWERS[i]),
-                    "L %.0f   R %.0f   %.2f V", r[i][0], r[i][1], r[i][2]);
+                    "L %.0f   R %.0f", r[i][0], r[i][1]);
         }
         telemetry.addData("kF left / right", "%.3e / %.3e", kfLeft, kfRight);
         if (kfLeft > 0 && kfRight > 0 && Math.abs(kfLeft - kfRight) / kf > 0.1) {
@@ -196,11 +164,6 @@ public class FlywheelFeedforwardTest extends LinearOpMode {
         telemetry.addLine("Paste into Shooter.java:");
         telemetry.addLine(String.format("FLYWHEEL_KF = %.6e;", kf));
         telemetry.addLine(String.format("FLYWHEEL_MAX_RPM = %.0f;", fullPowerRpm * MAX_RPM_HEADROOM));
-        if (nominal > 0) {
-            telemetry.addLine(String.format("NOMINAL_VOLTAGE = %.2f;", nominal));
-        } else {
-            telemetry.addLine("No battery reading: leave NOMINAL_VOLTAGE as it is.");
-        }
         telemetry.addLine();
         telemetry.addLine("If full-power RPM is far from the motor's rated speed,");
         telemetry.addLine("FLYWHEEL_TICKS_PER_REV is probably wrong (28 = bare motor).");
@@ -217,7 +180,6 @@ public class FlywheelFeedforwardTest extends LinearOpMode {
         telemetry.addData("leftRpm", l);
         telemetry.addData("rightRpm", r);
         telemetry.addData("power", commandedPower);
-        telemetry.addData("battery", battery.getRaw());
         telemetry.addData("Left encoder count / port", "%d / %d",
                 left.getCurrentPosition(), left.getPortNumber());
         telemetry.addData("Right encoder count / port", "%d / %d",

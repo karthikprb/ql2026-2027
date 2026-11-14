@@ -10,7 +10,6 @@ import com.qualcomm.robotcore.hardware.Servo;
 import com.qualcomm.robotcore.util.ElapsedTime;
 import com.qualcomm.robotcore.util.Range;
 
-import org.firstinspires.ftc.teamcode.Wrapper.BatteryVoltage;
 import org.firstinspires.ftc.teamcode.Wrapper.PidController;
 import org.firstinspires.ftc.teamcode.follower.math.Pose;
 import org.firstinspires.ftc.teamcode.follower.utils.Angle;
@@ -60,16 +59,6 @@ public class Shooter {
     public static double FLYWHEEL_KF = 3.607520e-04;       // feedforward: power per RPM (~1/free-speed RPM to start)
     public static double RPM_TOLERANCE = 75;               // "at speed" when both wheels are within this
     public static boolean RIGHT_FLYWHEEL_REVERSED = true;  // the two wheels usually spin opposite ways
-
-    // Battery compensation. Flywheel power is multiplied by NOMINAL_VOLTAGE / battery voltage,
-    // so a low battery gets more power and the wheels still reach the same RPM. The gains above
-    // stay correct as long as NOMINAL_VOLTAGE is the battery voltage they were tuned at
-    // ("Shooter 1: Flywheel kF" prints it). Once power hits 1.0 there is nothing left to add,
-    // so targets close to FLYWHEEL_MAX_RPM can still fall short on a low battery.
-    public static boolean VOLTAGE_COMPENSATION = true;
-    public static double NOMINAL_VOLTAGE = 12.5;
-    public static double VOLTAGE_READ_PERIOD_SEC = 0.1;    // how often the battery is read
-    public static double VOLTAGE_FILTER_SEC = 0.5;         // low-pass filter: dips shorter than this are mostly ignored
 
     // =================================================================
     //  HOOD
@@ -150,7 +139,6 @@ public class Shooter {
 
     private final PidController leftPid = new PidController(FLYWHEEL_KP, FLYWHEEL_KI, FLYWHEEL_KD);
     private final PidController rightPid = new PidController(FLYWHEEL_KP, FLYWHEEL_KI, FLYWHEEL_KD);
-    private final BatteryVoltage battery;
     private final ElapsedTime loopTimer = new ElapsedTime();
 
     // ---------------- targets (before trim) ----------------
@@ -173,7 +161,6 @@ public class Shooter {
         rightFlywheel = hardwareMap.get(DcMotorEx.class, RIGHT_FLYWHEEL_NAME);
         hood = hardwareMap.get(Servo.class, HOOD_NAME);
         turret = hardwareMap.get(DcMotorEx.class, TURRET_NAME);
-        battery = new BatteryVoltage(hardwareMap);
 
         // We run our own PID, so the SDK's built-in velocity control is turned off.
         leftFlywheel.setMode(DcMotor.RunMode.RUN_WITHOUT_ENCODER);
@@ -337,7 +324,6 @@ public class Shooter {
         rightPid.setGains(FLYWHEEL_KP, FLYWHEEL_KI, FLYWHEEL_KD);
 
         // ---- flywheels ----
-        double scale = voltageScale(battery.update(VOLTAGE_READ_PERIOD_SEC, VOLTAGE_FILTER_SEC));
         double rpmGoal = commandedRpm();
         if (rpmGoal <= 0) {
             leftFlywheel.setPower(0);
@@ -346,8 +332,8 @@ public class Shooter {
             rightPid.reset();
         } else {
             double ff = FLYWHEEL_KF * rpmGoal;
-            double leftPower = (ff + leftPid.update(rpmGoal, getLeftRpm(), dt)) * scale;
-            double rightPower = (ff + rightPid.update(rpmGoal, getRightRpm(), dt)) * scale;
+            double leftPower = ff + leftPid.update(rpmGoal, getLeftRpm(), dt);
+            double rightPower = ff + rightPid.update(rpmGoal, getRightRpm(), dt);
             leftFlywheel.setPower(Range.clip(leftPower, 0, 1));
             rightFlywheel.setPower(Range.clip(rightPower, 0, 1));
         }
@@ -358,15 +344,6 @@ public class Shooter {
         // ---- turret ----
         turret.setTargetPosition(turretTicksForDegrees(commandedTurretDeg()));
         turret.setPower(Range.clip(TURRET_MAX_POWER, 0, 1));
-    }
-
-    /**
-     * What to multiply flywheel power by for the given (filtered) battery voltage.
-     * 1.0 when compensation is off or the reading is missing or clearly wrong.
-     */
-    public static double voltageScale(double volts) {
-        if (!VOLTAGE_COMPENSATION || Double.isNaN(volts) || volts < 6.0) return 1.0;
-        return NOMINAL_VOLTAGE / volts;
     }
 
     /** Encoder count that puts the turret at the given angle. Inverse of getTurretDegrees(). */
@@ -401,16 +378,6 @@ public class Shooter {
 
     public double getTurretDegrees() {
         return TURRET_START_DEG + TURRET_DIRECTION * turret.getCurrentPosition() / TURRET_TICKS_PER_DEG;
-    }
-
-    /** Filtered battery voltage the flywheels are being compensated for. NaN before the first read. */
-    public double getBatteryVoltage() {
-        return battery.get();
-    }
-
-    /** What flywheel power is currently being multiplied by. */
-    public double getVoltageScale() {
-        return voltageScale(battery.get());
     }
 
     /** Raw turret encoder count since init. */

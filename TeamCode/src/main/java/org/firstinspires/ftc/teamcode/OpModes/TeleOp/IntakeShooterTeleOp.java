@@ -79,8 +79,6 @@ public class IntakeShooterTeleOp extends LinearOpMode {
                     shooter.commandedTurretDeg(), shooter.getTurretDegrees());
             telemetry.addData("Trims RPM / hood / turret", "%.0f / %.3f / %.1f",
                     shooter.getRpmTrim(), shooter.getHoodTrim(), shooter.getTurretTrimDeg());
-            telemetry.addData("Battery (V) / power scale", "%.2f / %.3f",
-                    shooter.getBatteryVoltage(), shooter.getVoltageScale());
             // Plain numbers for the Panels graph.
             telemetry.addData("targetRpm", shooter.commandedRpm());
             telemetry.addData("leftRpm", shooter.getLeftRpm());
