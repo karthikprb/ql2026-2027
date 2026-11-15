@@ -6,6 +6,8 @@ import com.qualcomm.robotcore.eventloop.opmode.Autonomous;
 import com.qualcomm.robotcore.eventloop.opmode.LinearOpMode;
 import com.qualcomm.robotcore.util.ElapsedTime;
 
+import org.firstinspires.ftc.teamcode.Components.Intake;
+import org.firstinspires.ftc.teamcode.Components.Shooter;
 import org.firstinspires.ftc.teamcode.follower.api.PoseFactory;
 import org.firstinspires.ftc.teamcode.follower.follower.Follower;
 import org.firstinspires.ftc.teamcode.follower.math.Pose;
@@ -20,7 +22,8 @@ import java.util.List;
 import static org.firstinspires.ftc.teamcode.follower.api.Paths.*;
 
 /**
- * Blue close auto: shoots the preload at start, waits, drives to firstStop, waits, then parks.
+ * Blue close auto: shoots the preload at start (flywheels to 2500 RPM, then 3 s of intake feed),
+ * waits 2 s, drives to firstStop, waits 3 s, then parks.
  * The route is a list of legs: each one waits, drives one path, then waits again.
  * Edit the route in route(). Everything below the route runs it and should rarely need changes.
  */
@@ -51,23 +54,69 @@ public class BlueClose extends LinearOpMode {
     private final Pose park             = p.of(130, 50, 270);
 
     // =================================================================
+    //  SHOT
+    //    1. Flywheels spin up to SHOT_RPM. The intake stays off until they get there.
+    //    2. Intake runs for FEED_TIME, feeding the balls into the flywheels.
+    //    3. Flywheels and intake both turn off. The shot is done.
+    //  SPINUP_TIMEOUT is a safety net: if the flywheels never reach SHOT_RPM (low battery,
+    //  something jammed) the intake feeds anyway instead of the auto stalling forever.
+    // =================================================================
+    private static final double SHOT_RPM       = 2500;
+    private static final double FEED_TIME      = 3.0;   // s the intake runs once at speed
+    private static final double SPINUP_TIMEOUT = 3.0;   // s, feed anyway after this
+    private static final double SHOT_MAX_TIME  = SPINUP_TIMEOUT + FEED_TIME + 0.5;
+
+    private enum ShotState { IDLE, SPIN_UP, FEED, DONE }
+
+    private Shooter shooter;
+    private Intake intake;
+    private ShotState shotState = ShotState.IDLE;
+    private final ElapsedTime shotTimer = new ElapsedTime();
+
+    /** Runs the shot one step. Call once per loop. */
+    private void updateShot() {
+        switch (shotState) {
+            case SPIN_UP:
+                shooter.setTargetRpm(SHOT_RPM);
+                if (shooter.flywheelAtSpeed() || shotTimer.seconds() >= SPINUP_TIMEOUT) {
+                    intake.setState(Intake.State.INTAKE);
+                    shotTimer.reset();
+                    shotState = ShotState.FEED;
+                }
+                break;
+            case FEED:
+                if (shotTimer.seconds() >= FEED_TIME) {
+                    shooter.setTargetRpm(0);
+                    intake.setState(Intake.State.STOW);
+                    shotState = ShotState.DONE;
+                }
+                break;
+            default:
+                break;
+        }
+    }
+
+    // =================================================================
     //  ACTIONS
     // =================================================================
     private enum Action { SHOOT, INTAKE, STOP_INTAKE }
 
     private void start(Action a) {
         switch (a) {
-            case SHOOT:       /* TODO: start shooter / feed rings */ break;
-            case INTAKE:      /* TODO: intake on */                  break;
-            case STOP_INTAKE: /* TODO: intake off */                 break;
+            case SHOOT:
+                shotTimer.reset();
+                shotState = ShotState.SPIN_UP;
+                break;
+            case INTAKE:      intake.setState(Intake.State.INTAKE); break;
+            case STOP_INTAKE: intake.setState(Intake.State.STOW);   break;
         }
     }
 
-    /** True once the action has finished, so the wait after a leg can end early. */
+    /** True once the action has finished, so the wait around a leg can end early. */
     private boolean finished(Action a) {
         switch (a) {
-            case SHOOT:  return false;   // TODO: return shooterFinished();
-            case INTAKE: return false;   // TODO: return intakeFull();
+            case SHOOT:  return shotState == ShotState.DONE;
+            case INTAKE: return false;   // no sensor to tell when the intake is full
             default:     return true;
         }
     }
@@ -84,8 +133,8 @@ public class BlueClose extends LinearOpMode {
     private List<Leg> route() {
         return Arrays.asList(
                 new Leg("To firstStop", line(start, firstStop).constant(firstStop))
-                        .before(Action.SHOOT, 1.5)   // preload shot before moving, up to 1.5 s
-                        .waitBefore(4.0)             // then sit 4 s after the shot
+                        .before(Action.SHOOT, SHOT_MAX_TIME)   // preload shot before moving
+                        .waitBefore(2.0)                       // then sit 2 s after the shot
                         .waitAfter(0.0),
 
                 new Leg("To park", line(firstStop, park).constant(park))
@@ -151,6 +200,8 @@ public class BlueClose extends LinearOpMode {
     public void runOpMode() throws InterruptedException {
         Follower follower = Constants.create(hardwareMap);
         follower.setPose(start);
+        intake = new Intake(hardwareMap);            // starts stowed
+        shooter = new Shooter(hardwareMap, false);   // no turret, same as the TeleOp
         TelemetryManager telemetryM = PanelsTelemetry.INSTANCE.getTelemetry();
         List<Leg> route = route();
 
@@ -219,6 +270,13 @@ public class BlueClose extends LinearOpMode {
                     break;
             }
 
+            updateShot();
+            shooter.update();   // runs the flywheel PID, needed every loop
+
+            telemetryM.addData("Shot", shotState);
+            telemetryM.addData("Target RPM", shooter.commandedRpm());
+            telemetryM.addData("Left / right RPM", String.format("%.0f / %.0f", shooter.getLeftRpm(), shooter.getRightRpm()));
+            telemetryM.addData("Intake", intake.getState());
             telemetryM.addData("X", pose.x());
             telemetryM.addData("Y", pose.y());
             telemetryM.addData("Heading", Math.toDegrees(pose.heading()));
@@ -230,6 +288,10 @@ public class BlueClose extends LinearOpMode {
             telemetryM.addData("Failed leg", failedLeg);
             telemetryM.update(telemetry);
         }
+
+        shooter.stop();
+        shooter.update();
+        intake.stop();
     }
 
     private void arrive(Leg leg, String reason) {
