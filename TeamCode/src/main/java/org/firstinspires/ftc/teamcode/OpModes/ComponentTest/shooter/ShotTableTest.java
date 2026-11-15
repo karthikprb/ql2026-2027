@@ -10,7 +10,7 @@ import com.qualcomm.robotcore.util.Range;
 
 import org.firstinspires.ftc.teamcode.Components.Intake;
 import org.firstinspires.ftc.teamcode.Components.Shooter;
-import org.firstinspires.ftc.teamcode.OpModes.TeleOp.IntakeShooterTeleOp;
+
 import org.firstinspires.ftc.teamcode.follower.api.PoseFactory;
 import org.firstinspires.ftc.teamcode.follower.drivetrain.DrivePowers;
 import org.firstinspires.ftc.teamcode.follower.hardware.Mecanum;
@@ -34,7 +34,7 @@ import java.util.List;
  * Put the robot at START_X / START_Y / START_HEADING_DEG below (or set them in Panels) with the turret at TURRET_START_DEG, then INIT.
  * During init: X = blue, B = red.
  *
- * The hood is only open or closed (gamepad 1 Y), never tuned by distance.
+ * The hood is only up or down (gamepad 1 Y), never tuned by distance.
  * Drive to a spot, pick open/closed, adjust RPM until shots go in reliably, then save the point.
  * Do this at 4 or more distances spread across where you will shoot from in a match.
  *
@@ -42,7 +42,7 @@ import java.util.List;
  *   Sticks         = drive
  *   Right bumper   = half speed
  *   A              = reset pose to the start pose (only if the robot is back on that spot)
- *   Y              = hood open / closed (IntakeShooterTeleOp.HOOD_OPEN / HOOD_CLOSED), starts closed
+ *   Y              = hood up / down (Shooter.HOOD_MAX / HOOD_MIN), starts down
  *
  * Gamepad 2 (shooter):
  *   A              = flywheels on / off
@@ -163,7 +163,7 @@ public class ShotTableTest extends LinearOpMode {
 
             shooter.setTurretDegrees(shooter.commandedTurretDeg() + turretTrim);
             shooter.setTargetRpm(flywheelOn ? rpm : 0);
-            shooter.setHoodPosition(hoodOpen ? IntakeShooterTeleOp.HOOD_OPEN : IntakeShooterTeleOp.HOOD_CLOSED);
+            shooter.setHoodUp(hoodOpen);
             shooter.update();
 
             feed(pad2.raw().right_trigger > 0.3);

@@ -18,20 +18,20 @@ import org.firstinspires.ftc.teamcode.follower.utils.Angle;
  * Shooter = two flywheel motors (velocity PID + feedforward), a hood servo and a turret motor
  * (our own PID on the turret angle, TURRET_MIN_DEG..TURRET_MAX_DEG, no wrapping).
  *
- * The hood is just open or closed. It never changes with the robot's position: the only thing
- * that moves it is the OpMode calling setHoodPosition() (the TeleOp does that on gamepad 1 Y).
- * It starts at HOOD_MIN (closed) when the Shooter is made.
+ * The hood has two positions: HOOD_MIN (down) and HOOD_MAX (up). It never changes with the
+ * robot's position. It starts down when the Shooter is made.
  *
- * Two ways to use it:
- *   - Manual:  setTargetRpm(), setHoodPosition(), setTurretDegrees()
+ * Three ways to use it:
+ *   - Gamepad: handleGamepad(gamepad1) for shooter on/off and the hood, and
+ *              handleTrimGamepad(gamepad2) for RPM / turret trims. All the shooter's
+ *              gamepad buttons live in this class, not in the OpMode.
+ *   - Manual:  setTargetRpm(), setHoodUp() / setHoodPosition(), setTurretDegrees()
  *   - Auto:    setAlliance() once, then aimAt(robotPose) every loop. It picks the alliance's
  *              goal on the robot's side of the field, sets the flywheels to AIM_RPM and points
  *              the turret at the goal. It does not touch the hood.
  *
- * In both cases call update() once per loop so the flywheel PID runs and the turret target
- * is sent, and handleGamepad(gamepad2)
- * if you want the driver to be able to trim RPM / turret with the dpad.
- * The trims are added on top of whatever aimAt() or the setters asked for.
+ * Whichever you use, call update() once per loop so the flywheel PID runs and the turret
+ * target is sent. The trims are added on top of whatever aimAt() or the setters asked for.
  *
  * @Configurable: every public static number below shows up under "Shooter" in Panels and
  * can be changed while an OpMode runs. The PID gains are re-read every update(), so a
@@ -67,10 +67,11 @@ public class Shooter {
     // =================================================================
     //  HOOD
     // =================================================================
-    // HOOD_MIN = closed, HOOD_MAX = open. On this robot the servo number goes DOWN as the
-    // hood opens, so HOOD_MIN is the bigger number. setHoodPosition() handles either order.
-    public static double HOOD_MAX = 0.45;
-    public static double HOOD_MIN = .88;
+    // The only two hood positions. HOOD_MIN = down, HOOD_MAX = up. On this robot the servo
+    // number goes DOWN as the hood goes up, so HOOD_MIN is the bigger number. No cap is applied:
+    // whatever these are set to is sent straight to the servo.
+    public static double HOOD_MIN = 0.9;   // down
+    public static double HOOD_MAX = 0.5;   // up
 
     // =================================================================
     //  TURRET
@@ -150,9 +151,10 @@ public class Shooter {
     public static double RPM_PER_INCH = 10;
 
     // =================================================================
-    //  GAMEPAD 2 TRIM STEPS
+    //  GAMEPAD
     // =================================================================
-    public static double RPM_STEP = 50;
+    public static double SHOOTER_RPM = 2200;   // flywheel speed when gamepad 1 right bumper turns the shooter on
+    public static double RPM_STEP = 50;        // gamepad 2 trim steps
     public static double TURRET_STEP_DEG = 2;
 
     // ---------------- hardware ----------------
@@ -171,6 +173,10 @@ public class Shooter {
     private double targetRpm = 0;
     private double targetHood = HOOD_MIN;
     private double targetTurretDeg = TURRET_START_DEG;
+
+    // ---------------- gamepad 1 state ----------------
+    private boolean shooterOn = false;
+    private boolean hoodUp = false;   // starts down
 
     // ---------------- driver trims (gamepad 2) ----------------
     private double rpmTrim = 0;
@@ -229,9 +235,19 @@ public class Shooter {
         targetRpm = Range.clip(rpm, 0, FLYWHEEL_MAX_RPM);
     }
 
-    /** Hood servo position, kept between HOOD_MIN and HOOD_MAX (whichever order they are in). */
+    /** Hood servo position, sent as-is (no cap). Normally use setHoodUp() instead. */
     public void setHoodPosition(double position) {
-        targetHood = Range.clip(position, Math.min(HOOD_MIN, HOOD_MAX), Math.max(HOOD_MIN, HOOD_MAX));
+        targetHood = position;
+    }
+
+    /** true = hood up (HOOD_MAX), false = hood down (HOOD_MIN). */
+    public void setHoodUp(boolean up) {
+        hoodUp = up;
+        setHoodPosition(up ? HOOD_MAX : HOOD_MIN);
+    }
+
+    public boolean isHoodUp() {
+        return hoodUp;
     }
 
     /** Turret angle in degrees, clipped to TURRET_MIN_DEG..TURRET_MAX_DEG. */
@@ -322,13 +338,33 @@ public class Shooter {
     }
 
     // =================================================================
-    //  GAMEPAD 2 TRIM
+    //  GAMEPAD 1 (driver)
+    //    Right bumper = shooter ON at SHOOTER_RPM
+    //    Left bumper  = shooter OFF
+    //    Y            = hood toggle: up (HOOD_MAX) / down (HOOD_MIN), starts down
+    // =================================================================
+    public void handleGamepad(Gamepad gamepad) {
+        if (gamepad.rightBumperWasPressed()) shooterOn = true;
+        if (gamepad.leftBumperWasPressed()) shooterOn = false;
+        // Set every loop so a SHOOTER_RPM change in Panels applies straight away.
+        setTargetRpm(shooterOn ? SHOOTER_RPM : 0);
+
+        if (gamepad.yWasPressed()) hoodUp = !hoodUp;
+        // Also every loop, so HOOD_MIN / HOOD_MAX changes in Panels apply straight away.
+        setHoodUp(hoodUp);
+    }
+
+    public boolean isShooterOn() {
+        return shooterOn;
+    }
+
+    // =================================================================
+    //  GAMEPAD 2 (trims)
     //    Dpad up / down      = RPM    +/- RPM_STEP
     //    Dpad right / left   = turret +/- TURRET_STEP_DEG
     //    Options             = clear all trims
-    //    (No hood trim: the hood only moves when the OpMode calls setHoodPosition.)
     // =================================================================
-    public void handleGamepad(Gamepad gamepad) {
+    public void handleTrimGamepad(Gamepad gamepad) {
         if (gamepad.dpadUpWasPressed()) rpmTrim += RPM_STEP;
         if (gamepad.dpadDownWasPressed()) rpmTrim -= RPM_STEP;
         if (turret != null) {
@@ -436,7 +472,7 @@ public class Shooter {
     }
 
     public double commandedHood() {
-        return targetHood;   // already kept inside HOOD_MIN / HOOD_MAX by setHoodPosition
+        return targetHood;
     }
 
     public double commandedTurretDeg() {

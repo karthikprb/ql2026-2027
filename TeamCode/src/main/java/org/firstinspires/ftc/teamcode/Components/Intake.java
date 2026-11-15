@@ -19,7 +19,7 @@ import com.qualcomm.robotcore.hardware.Servo;
  * Usage in an OpMode:
  *   Intake intake = new Intake(hardwareMap);
  *   ...
- *   intake.update(gamepad2);     // once per loop
+ *   intake.handleGamepad(gamepad1);     // once per loop
  */
 public class Intake {
 
@@ -52,18 +52,14 @@ public class Intake {
     /**
      * Reads the gamepad and applies the matching state. Call once per loop.
      *
-     *   Right bumper = INTAKE
-     *   Left bumper  = STOW
-     *   B / circle   = OUTTAKE
+     *   A = INTAKE   (dropdown down, motor at INTAKE_POWER)
+     *   B = STOW     (dropdown up, motor off)
+     *   X = OUTTAKE  (dropdown down, motor at OUTTAKE_POWER)
      */
-    public void update(Gamepad gamepad) {
-        if (gamepad.right_bumper) {
-            setState(State.INTAKE);
-        } else if (gamepad.left_bumper) {
-            setState(State.STOW);
-        } else if (gamepad.b) {
-            setState(State.OUTTAKE);
-        }
+    public void handleGamepad(Gamepad gamepad) {
+        if (gamepad.aWasPressed()) setState(State.INTAKE);
+        if (gamepad.bWasPressed()) setState(State.STOW);
+        if (gamepad.xWasPressed()) setState(State.OUTTAKE);
     }
 
     /** Puts the intake in the given state straight away. */

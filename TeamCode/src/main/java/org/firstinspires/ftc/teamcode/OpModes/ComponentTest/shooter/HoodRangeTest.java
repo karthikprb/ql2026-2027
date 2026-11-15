@@ -16,7 +16,7 @@ import org.firstinspires.ftc.teamcode.Components.Shooter;
  * Move the hood slowly toward one end. Stop just before it hits the hard stop or the
  * servo starts buzzing, and save it. Do the same at the other end.
  *
- * The hood starts at HOOD_MIN when the Shooter is made, so HOOD_MIN should be the closed end.
+ * The hood starts at HOOD_MIN when the Shooter is made, so HOOD_MIN should be the down end.
  *
  * Gamepad 1:
  *   Dpad up / down    = position +/- 0.005  (fine)
@@ -70,13 +70,10 @@ public class HoodRangeTest extends LinearOpMode {
 
             if (!Double.isNaN(down) && !Double.isNaN(up)) {
                 if (down != up) {
-                    // Either order is fine: Shooter.setHoodPosition() keeps the hood between the two.
+                    // Either order is fine: Shooter just sends HOOD_MIN for down and HOOD_MAX for up.
                     telemetry.addLine("Paste into Shooter.java:");
-                    telemetry.addLine(String.format("HOOD_MIN = %.3f;   (closed)", down));
-                    telemetry.addLine(String.format("HOOD_MAX = %.3f;   (open)", up));
-                    telemetry.addLine("and into IntakeShooterTeleOp.java:");
-                    telemetry.addLine(String.format("HOOD_CLOSED = %.3f;", down));
-                    telemetry.addLine(String.format("HOOD_OPEN = %.3f;", up));
+                    telemetry.addLine(String.format("HOOD_MIN = %.3f;   (down)", down));
+                    telemetry.addLine(String.format("HOOD_MAX = %.3f;   (up)", up));
                 } else {
                     telemetry.addLine("Both ends are the same position. Save two different ends.");
                 }
