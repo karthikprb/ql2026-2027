@@ -28,6 +28,7 @@ import org.firstinspires.ftc.teamcode.pedroPathing.Constants;
  *   A             = intake ON    (Intake INTAKE: dropdown down, motor at INTAKE_POWER)
  *   B             = intake OFF   (Intake STOW: dropdown up, motor off)
  *   X             = intake OUTTAKE (dropdown down, motor at OUTTAKE_POWER)
+ *   Y             = hood toggle: open (HOOD_OPEN) / closed (HOOD_CLOSED), starts closed
  *   Right bumper  = shooter ON at SHOOTER_RPM
  *   Left bumper   = shooter OFF
  *
@@ -37,7 +38,7 @@ import org.firstinspires.ftc.teamcode.pedroPathing.Constants;
  *   Options             = clear all trims
  *   (TURRET COMMENTED OUT FOR NOW: Dpad right / left = turret +/- Shooter.TURRET_STEP_DEG)
  *
- * The hood starts at Shooter.HOOD_MIN.
+ * The hood starts closed (HOOD_CLOSED). Gamepad 2's hood trim is added on top of open/closed.
  * The turret is OFF in this OpMode: Shooter is made without it, so the turret motor is never
  * accessed and doesn't need to be in the robot config.
  * (TURRET COMMENTED OUT FOR NOW: the turret holds wherever it was pointing at INIT, since
@@ -52,6 +53,10 @@ public class IntakeShooterTeleOp extends LinearOpMode {
 
     /** Drive power multiplier while the right trigger is held. Editable in Panels. */
     public static double SLOW_MODE_SCALE = 0.4;
+
+    /** Hood servo positions for the Y toggle. Editable in Panels; kept inside Shooter.HOOD_MIN..HOOD_MAX. */
+    public static double HOOD_CLOSED = 0.0;
+    public static double HOOD_OPEN = 1.0;
 
     @Override
     public void runOpMode() {
@@ -68,7 +73,7 @@ public class IntakeShooterTeleOp extends LinearOpMode {
         // TURRET COMMENTED OUT FOR NOW
         // telemetry.addLine("Point the turret forward before pressing INIT.");
         telemetry.addLine("GP1: sticks drive, RT slow, Options field-centric");
-        telemetry.addLine("GP1: A intake on, B intake off, X outtake, RB shooter on, LB shooter off");
+        telemetry.addLine("GP1: A intake on, B intake off, X outtake, Y hood, RB shooter on, LB shooter off");
         telemetry.update();
         waitForStart();
 
@@ -78,6 +83,7 @@ public class IntakeShooterTeleOp extends LinearOpMode {
 
         boolean shooterOn = false;
         boolean fieldCentric = false;
+        boolean hoodOpen = false;   // starts closed
 
         while (opModeIsActive()) {
             follower.update();
@@ -104,6 +110,10 @@ public class IntakeShooterTeleOp extends LinearOpMode {
             // Set every loop so a SHOOTER_RPM change in Panels applies straight away.
             shooter.setTargetRpm(shooterOn ? SHOOTER_RPM : 0);
 
+            // Y toggles the hood: one press opens it, the next press closes it.
+            if (gamepad1.yWasPressed()) hoodOpen = !hoodOpen;
+            shooter.setHoodPosition(hoodOpen ? HOOD_OPEN : HOOD_CLOSED);
+
             // ---------------- gamepad 2: shooter trims ----------------
             shooter.handleGamepad(gamepad2);
 
@@ -118,7 +128,7 @@ public class IntakeShooterTeleOp extends LinearOpMode {
             telemetry.addData("Target RPM (with trim)", "%.0f", shooter.commandedRpm());
             telemetry.addData("Left / Right RPM", "%.0f / %.0f", shooter.getLeftRpm(), shooter.getRightRpm());
             telemetry.addData("At speed", shooter.flywheelAtSpeed());
-            telemetry.addData("Hood", "%.3f", shooter.commandedHood());
+            telemetry.addData("Hood", "%s  %.3f  (Y to toggle)", hoodOpen ? "OPEN" : "closed", shooter.commandedHood());
             // TURRET COMMENTED OUT FOR NOW
             // telemetry.addData("Turret target / now (deg)", "%.1f / %.1f",
             //         shooter.commandedTurretDeg(), shooter.getTurretDegrees());
