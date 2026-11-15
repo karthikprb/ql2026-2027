@@ -88,10 +88,10 @@ public class Shooter {
     public static double TURRET_FORWARD_DEG = 90;          // turret angle that points along the robot's heading
 
     public static double TURRET_MIN_DEG = 60;              // PLACEHOLDER: counterclockwise end, degrees
-    public static int TURRET_MIN_TICKS = -45;              // PLACEHOLDER: encoder ticks at TURRET_MIN_DEG
+    public static int TURRET_MIN_TICKS = 10;              // PLACEHOLDER: encoder ticks at TURRET_MIN_DEG
 
     public static double TURRET_MAX_DEG = 120;             // PLACEHOLDER: clockwise end, degrees
-    public static int TURRET_MAX_TICKS = 45;               // PLACEHOLDER: encoder ticks at TURRET_MAX_DEG
+    public static int TURRET_MAX_TICKS = -15;               // PLACEHOLDER: encoder ticks at TURRET_MAX_DEG
 
     public static double TURRET_MAX_POWER = 0.6;           // power given to RUN_TO_POSITION
     public static double TURRET_TOLERANCE_DEG = 1.0;
