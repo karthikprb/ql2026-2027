@@ -5,6 +5,7 @@ import com.bylazar.telemetry.JoinedTelemetry;
 import com.bylazar.telemetry.PanelsTelemetry;
 import com.bylazar.configurables.annotations.Configurable;
 import com.qualcomm.robotcore.eventloop.opmode.LinearOpMode;
+import com.qualcomm.robotcore.eventloop.opmode.Disabled;
 import com.qualcomm.robotcore.eventloop.opmode.TeleOp;
 import com.qualcomm.robotcore.util.Range;
 
@@ -17,6 +18,7 @@ import org.firstinspires.ftc.teamcode.follower.hardware.Mecanum;
 import org.firstinspires.ftc.teamcode.follower.hardware.PinpointLocalizer;
 import org.firstinspires.ftc.teamcode.follower.math.Pose;
 import org.firstinspires.ftc.teamcode.pedroPathing.Constants;
+import org.firstinspires.ftc.teamcode.pedroPathing.Field;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -54,6 +56,7 @@ import java.util.List;
  *   B              = load RPM from the current fit for this distance
  */
 @Configurable
+@Disabled   // hidden from the Driver Station: test OpMode. Remove this line to use it.
 @TeleOp(name = "Shooter 6: Shot Table", group = "Shooter")
 public class ShotTableTest extends LinearOpMode {
 
@@ -102,8 +105,8 @@ public class ShotTableTest extends LinearOpMode {
         while (opModeInInit()) {
             pad1.update();
             pad2.update();
-            if (pad1.xWasPressed() || pad2.xWasPressed()) shooter.setAlliance(Shooter.Alliance.BLUE);
-            if (pad1.bWasPressed() || pad2.bWasPressed()) shooter.setAlliance(Shooter.Alliance.RED);
+            if (pad1.xWasPressed() || pad2.xWasPressed()) shooter.setAlliance(Field.Alliance.BLUE);
+            if (pad1.bWasPressed() || pad2.bWasPressed()) shooter.setAlliance(Field.Alliance.RED);
             telemetry.addData("Alliance", "%s   (X = blue, B = red)", shooter.getAlliance());
             telemetry.addData("Start pose", "%.1f, %.1f, %.0f deg",
                     START_X, START_Y, START_HEADING_DEG);

@@ -4,6 +4,7 @@ import com.bylazar.configurables.annotations.Configurable;
 import com.bylazar.telemetry.JoinedTelemetry;
 import com.bylazar.telemetry.PanelsTelemetry;
 import com.qualcomm.robotcore.eventloop.opmode.LinearOpMode;
+import com.qualcomm.robotcore.eventloop.opmode.Disabled;
 import com.qualcomm.robotcore.eventloop.opmode.TeleOp;
 import com.qualcomm.robotcore.hardware.DcMotor;
 import com.qualcomm.robotcore.hardware.DcMotorEx;
@@ -38,6 +39,7 @@ import org.firstinspires.ftc.teamcode.Components.Shooter;
  * from the signs of the two saved ends. Start with a small POWER so you don't hit a hard stop fast.
  */
 @Configurable
+@Disabled   // hidden from the Driver Station: test OpMode. Remove this line to use it.
 @TeleOp(name = "Shooter 4: Turret Position", group = "Shooter")
 public class TurretPositionTest extends LinearOpMode {
 

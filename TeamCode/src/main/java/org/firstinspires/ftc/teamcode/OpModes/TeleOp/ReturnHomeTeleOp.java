@@ -5,6 +5,7 @@ import static org.firstinspires.ftc.teamcode.follower.api.Paths.line;
 import com.bylazar.telemetry.PanelsTelemetry;
 import com.bylazar.telemetry.TelemetryManager;
 import com.qualcomm.robotcore.eventloop.opmode.LinearOpMode;
+import com.qualcomm.robotcore.eventloop.opmode.Disabled;
 import com.qualcomm.robotcore.eventloop.opmode.TeleOp;
 import com.qualcomm.robotcore.util.ElapsedTime;
 import com.qualcomm.robotcore.util.Range;
@@ -47,6 +48,7 @@ import org.firstinspires.ftc.teamcode.pedroPathing.Constants;
  *   A (cross)         = return home. Press A again to cancel.
  *   Moving any stick while it is returning also cancels, so you can always take over.
  */
+@Disabled   // hidden from the Driver Station: test OpMode. Remove this line to use it.
 @TeleOp(name = "Drive + Return Home", group = "TeleOp")
 public class ReturnHomeTeleOp extends LinearOpMode {
 

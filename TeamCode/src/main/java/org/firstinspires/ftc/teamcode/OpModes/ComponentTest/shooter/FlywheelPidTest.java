@@ -5,6 +5,7 @@ import com.bylazar.telemetry.JoinedTelemetry;
 import com.bylazar.telemetry.PanelsTelemetry;
 import com.bylazar.configurables.annotations.Configurable;
 import com.qualcomm.robotcore.eventloop.opmode.LinearOpMode;
+import com.qualcomm.robotcore.eventloop.opmode.Disabled;
 import com.qualcomm.robotcore.eventloop.opmode.TeleOp;
 import com.qualcomm.robotcore.hardware.DcMotor;
 import com.qualcomm.robotcore.hardware.DcMotorEx;
@@ -39,6 +40,7 @@ import org.firstinspires.ftc.teamcode.Wrapper.PidController;
  * Graph target / left / right in Panels to see it.
  */
 @Configurable
+@Disabled   // hidden from the Driver Station: test OpMode. Remove this line to use it.
 @TeleOp(name = "Shooter 2: Flywheel PID", group = "Shooter")
 public class FlywheelPidTest extends LinearOpMode {
 

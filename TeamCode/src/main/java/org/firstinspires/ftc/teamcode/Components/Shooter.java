@@ -13,6 +13,7 @@ import com.qualcomm.robotcore.util.Range;
 import org.firstinspires.ftc.teamcode.Wrapper.PidController;
 import org.firstinspires.ftc.teamcode.follower.math.Pose;
 import org.firstinspires.ftc.teamcode.follower.utils.Angle;
+import org.firstinspires.ftc.teamcode.pedroPathing.Field.Alliance;
 
 /**
  * Shooter = two flywheel motors (velocity PID + feedforward), a hood servo and a turret motor
@@ -22,7 +23,8 @@ import org.firstinspires.ftc.teamcode.follower.utils.Angle;
  * robot's position. It starts down when the Shooter is made.
  *
  * Three ways to use it:
- *   - Gamepad: handleGamepad(gamepad1) for shooter on/off and the hood, and
+ *   - Gamepad: handleGamepad(gamepad1) for shooter on/off, the hood and the tracking toggle,
+ *              plus trackGoal(pose) every loop to keep the turret on the goal, and
  *              handleTrimGamepad(gamepad2) for RPM / turret trims. All the shooter's
  *              gamepad buttons live in this class, not in the OpMode.
  *   - Manual:  setTargetRpm(), setHoodUp() / setHoodPosition(), setTurretDegrees()
@@ -110,11 +112,13 @@ public class Shooter {
     //  BIOBUZZ: one HIVE structure in the middle of the field holds a red HIVE and a blue
     //  HIVE. Each HIVE has two CELLS, one toward the audience and one toward the far side,
     //  about 18.8 in apart. That is 4 goals total, 2 per alliance. The robot shoots at the
-    //  CELL on its own side of the field, so aimAt() picks whichever of the alliance's two
-    //  CELLS is closer to the robot.
+    //  CELL on its own end of the field: the FAR cell when the robot's y is above
+    //  GOAL_SWITCH_Y (robot faces 270, toward the audience), the NEAR cell when it is below
+    //  (robot flipped around to face 90). See chooseGoal().
     //
     //  The x/y/z below are PLACEHOLDERS worked out from the frame size. Measure the real
-    //  ones off the field CAD or with a tape measure from the field walls.
+    //  ones off the field CAD or with a tape measure from the field walls. Red is the mirror
+    //  image of blue across x = 72 (see Field), so RED x = 144 - BLUE x.
     // =================================================================
 
     /** A goal position on the field: x, y in inches on the tiles, z = opening height above the tiles. */
@@ -130,9 +134,10 @@ public class Shooter {
         }
     }
 
-    public enum Alliance { RED, BLUE }
+    /** Robot y above this = shoot at the FAR cell, below = the NEAR cell. Editable in Panels. */
+    public static double GOAL_SWITCH_Y = 60;
 
-    public static double GOAL_Z = 43.95;              // PLACEHOLDER: HIVE pivot axis height. Measure the up-facing CELL opening.
+    public static double GOAL_Z = 43.95;             // PLACEHOLDER: HIVE pivot axis height. Measure the up-facing CELL opening.
     public static double SHOOTER_EXIT_HEIGHT = 12.0;  // PLACEHOLDER: height of the ball leaving the shooter, inches above tiles
 
     // Field center is (72, 72). Blue HIVE is on the +x half, red on the -x half (PLACEHOLDER).
@@ -186,6 +191,8 @@ public class Shooter {
     private Alliance alliance = Alliance.BLUE;
     private Goal activeGoal = BLUE_FAR;
     private double lastDistanceToGoal = 0;
+    private double lastWantedTurretDeg = TURRET_FORWARD_DEG;   // before clipping to the turret's range
+    private boolean tracking = true;   // gamepad 1 dpad up toggles; false = turret sits forward
 
     /** Shooter with the turret. */
     public Shooter(HardwareMap hardwareMap) {
@@ -280,17 +287,17 @@ public class Shooter {
     }
 
     /**
-     * Picks the alliance's CELL on the robot's side of the field, i.e. whichever of the
-     * two is closer to the robot.
+     * Picks the alliance's CELL on the robot's end of the field: the FAR cell (away from the
+     * audience) when the robot's y is above GOAL_SWITCH_Y, otherwise the NEAR cell.
      */
     public Goal chooseGoal(Pose robotPose) {
-        Goal far = alliance == Alliance.BLUE ? BLUE_FAR : RED_FAR;
-        Goal near = alliance == Alliance.BLUE ? BLUE_NEAR : RED_NEAR;
-        return horizontalDistance(robotPose, far) <= horizontalDistance(robotPose, near) ? far : near;
+        boolean farSide = robotPose.y() > GOAL_SWITCH_Y;
+        if (alliance == Alliance.BLUE) return farSide ? BLUE_FAR : BLUE_NEAR;
+        return farSide ? RED_FAR : RED_NEAR;
     }
 
     /**
-     * Sets the flywheels to AIM_RPM and points the turret at the goal on the robot's side of
+     * Sets the flywheels to AIM_RPM and points the turret at the goal on the robot's end of
      * the field, from the robot's field pose. Leaves the hood alone. Call every loop while
      * lining up, then update().
      */
@@ -300,23 +307,54 @@ public class Shooter {
 
     /** Same as aimAt(pose) but at a specific goal. */
     public void aimAt(Pose robotPose, Goal goal) {
+        aimTurretAt(robotPose, goal);
+        // Fixed RPM for now. Switch to rpmForDistance(lastDistanceToGoal) once the shot table is tuned.
+        setTargetRpm(AIM_RPM);
+    }
+
+    /**
+     * TeleOp tracking: every loop, point the turret at the goal on the robot's end of the field
+     * (or straight forward when tracking is off). Only the turret moves: RPM and hood are left
+     * to the driver's buttons. If the goal is outside the turret's range the turret waits at
+     * the nearest end and picks the goal up again as soon as the robot turns back.
+     */
+    public void trackGoal(Pose robotPose) {
+        if (tracking) aimTurretAt(robotPose, chooseGoal(robotPose));
+        else setTurretDegrees(TURRET_FORWARD_DEG);
+    }
+
+    /** Points only the turret at the goal, from the robot's field pose. RPM and hood are untouched. */
+    public void aimTurretAt(Pose robotPose, Goal goal) {
         activeGoal = goal;
         double dx = goal.x - robotPose.x();
         double dy = goal.y - robotPose.y();
         lastDistanceToGoal = Math.hypot(dx, dy);
 
-        // Fixed RPM for now. Switch to rpmForDistance(lastDistanceToGoal) once the shot table is tuned.
-        setTargetRpm(AIM_RPM);
-
         // Angle from the robot to the goal, relative to where the robot is facing.
         // Positive = goal is to the robot's left (CCW), like the Pedro heading.
         double angleToGoal = Math.atan2(dy, dx);
         double relativeRad = Angle.normalizeSigned(angleToGoal - robotPose.heading());
-        setTurretDegrees(turretForRelativeAngle(Math.toDegrees(relativeRad)));
+        lastWantedTurretDeg = turretForRelativeAngle(Math.toDegrees(relativeRad));
+        setTurretDegrees(lastWantedTurretDeg);   // clips to TURRET_MIN_DEG..TURRET_MAX_DEG
     }
 
-    private static double horizontalDistance(Pose robotPose, Goal goal) {
-        return Math.hypot(goal.x - robotPose.x(), goal.y - robotPose.y());
+    /** Turret tracking on (follow the goal) or off (turret forward). */
+    public void setTracking(boolean on) {
+        tracking = on;
+    }
+
+    public boolean isTracking() {
+        return tracking;
+    }
+
+    /** False when the last aim wanted an angle the turret can't reach, so it is parked at an end. */
+    public boolean goalInTurretRange() {
+        return lastWantedTurretDeg >= TURRET_MIN_DEG && lastWantedTurretDeg <= TURRET_MAX_DEG;
+    }
+
+    /** The turret angle the last aim asked for, before clipping to the turret's range. */
+    public double getWantedTurretDeg() {
+        return lastWantedTurretDeg;
     }
 
     /** How far the goal opening is above the ball's exit point. Same for every goal, since GOAL_Z is shared. */
@@ -342,6 +380,7 @@ public class Shooter {
     //    Right bumper = shooter ON at SHOOTER_RPM
     //    Left bumper  = shooter OFF
     //    Y            = hood toggle: up (HOOD_MAX) / down (HOOD_MIN), starts down
+    //    Dpad up      = turret tracking on / off (off = turret straight forward), starts on
     // =================================================================
     public void handleGamepad(Gamepad gamepad) {
         if (gamepad.rightBumperWasPressed()) shooterOn = true;
@@ -352,6 +391,8 @@ public class Shooter {
         if (gamepad.yWasPressed()) hoodUp = !hoodUp;
         // Also every loop, so HOOD_MIN / HOOD_MAX changes in Panels apply straight away.
         setHoodUp(hoodUp);
+
+        if (gamepad.dpadUpWasPressed()) tracking = !tracking;
     }
 
     public boolean isShooterOn() {

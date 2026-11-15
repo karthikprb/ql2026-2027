@@ -4,6 +4,7 @@ import com.bylazar.gamepad.PanelsGamepad;
 import com.bylazar.telemetry.JoinedTelemetry;
 import com.bylazar.telemetry.PanelsTelemetry;
 import com.qualcomm.robotcore.eventloop.opmode.LinearOpMode;
+import com.qualcomm.robotcore.eventloop.opmode.Disabled;
 import com.qualcomm.robotcore.eventloop.opmode.TeleOp;
 import com.qualcomm.robotcore.hardware.Servo;
 import com.qualcomm.robotcore.util.Range;
@@ -27,6 +28,7 @@ import org.firstinspires.ftc.teamcode.Components.Shooter;
  *
  * The servo doesn't move until you press something after start.
  */
+@Disabled   // hidden from the Driver Station: test OpMode. Remove this line to use it.
 @TeleOp(name = "Shooter 3: Hood Range", group = "Shooter")
 public class HoodRangeTest extends LinearOpMode {
 

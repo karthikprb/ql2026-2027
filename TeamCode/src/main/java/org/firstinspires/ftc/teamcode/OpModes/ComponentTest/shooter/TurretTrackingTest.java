@@ -4,6 +4,7 @@ import com.bylazar.configurables.annotations.Configurable;
 import com.bylazar.telemetry.JoinedTelemetry;
 import com.bylazar.telemetry.PanelsTelemetry;
 import com.qualcomm.robotcore.eventloop.opmode.LinearOpMode;
+import com.qualcomm.robotcore.eventloop.opmode.Disabled;
 import com.qualcomm.robotcore.eventloop.opmode.TeleOp;
 
 import org.firstinspires.ftc.teamcode.Components.Shooter;
@@ -14,6 +15,7 @@ import org.firstinspires.ftc.teamcode.follower.hardware.PinpointLocalizer;
 import org.firstinspires.ftc.teamcode.follower.math.Pose;
 import org.firstinspires.ftc.teamcode.follower.utils.Angle;
 import org.firstinspires.ftc.teamcode.pedroPathing.Constants;
+import org.firstinspires.ftc.teamcode.pedroPathing.Field;
 
 /**
  * Turret auto-tracking test. Drive the robot around and the turret should keep pointing at
@@ -51,6 +53,7 @@ import org.firstinspires.ftc.teamcode.pedroPathing.Constants;
  * then the turret ticks / degrees in Shooter.java.
  */
 @Configurable
+@Disabled   // hidden from the Driver Station: test OpMode. Remove this line to use it.
 @TeleOp(name = "Shooter 7: Turret Tracking", group = "Shooter")
 public class TurretTrackingTest extends LinearOpMode {
 
@@ -71,7 +74,7 @@ public class TurretTrackingTest extends LinearOpMode {
         telemetry = new JoinedTelemetry(PanelsTelemetry.INSTANCE.getFtcTelemetry(), telemetry);
 
         Shooter shooter = new Shooter(hardwareMap);   // with the turret
-        shooter.setAlliance(Shooter.Alliance.BLUE);
+        shooter.setAlliance(Field.Alliance.BLUE);
         PinpointLocalizer localizer = new PinpointLocalizer(hardwareMap, Constants.localizerConfig);
         Mecanum drive = new Mecanum(hardwareMap, Constants.drivetrainConfig);
 

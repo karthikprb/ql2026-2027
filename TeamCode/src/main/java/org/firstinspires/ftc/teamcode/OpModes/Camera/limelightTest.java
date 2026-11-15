@@ -5,6 +5,7 @@ import com.bylazar.telemetry.TelemetryManager;
 import com.qualcomm.hardware.limelightvision.LLResult;
 import com.qualcomm.hardware.limelightvision.Limelight3A;
 import com.qualcomm.robotcore.eventloop.opmode.LinearOpMode;
+import com.qualcomm.robotcore.eventloop.opmode.Disabled;
 import com.qualcomm.robotcore.eventloop.opmode.TeleOp;
 
 import org.firstinspires.ftc.robotcore.external.navigation.AngleUnit;
@@ -31,6 +32,7 @@ import org.firstinspires.ftc.teamcode.pedroPathing.Constants;
  *     amount, the camera pose in the Limelight web UI is wrong; if it's off
  *     by a ratio, the tag size is wrong.
  */
+@Disabled   // hidden from the Driver Station: test OpMode. Remove this line to use it.
 @TeleOp(name = "Limelight Tag Localization")
 public class limelightTest extends LinearOpMode {
 

@@ -1,6 +1,7 @@
 package org.firstinspires.ftc.teamcode.OpModes.Localization;
 
 import com.qualcomm.robotcore.eventloop.opmode.LinearOpMode;
+import com.qualcomm.robotcore.eventloop.opmode.Disabled;
 import com.qualcomm.robotcore.eventloop.opmode.TeleOp;
 
 import org.firstinspires.ftc.teamcode.follower.hardware.PinpointConfig;
@@ -20,6 +21,7 @@ import org.firstinspires.ftc.teamcode.pedroPathing.Constants;
  *   A = finish this push
  *   B = start over
  */
+@Disabled   // hidden from the Driver Station: test OpMode. Remove this line to use it.
 @TeleOp(name = "Odo Cal: Push", group = "Test")
 public class OdoPushCal extends LinearOpMode {
 

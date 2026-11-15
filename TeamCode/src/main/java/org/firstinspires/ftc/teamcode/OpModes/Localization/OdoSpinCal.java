@@ -1,6 +1,7 @@
 package org.firstinspires.ftc.teamcode.OpModes.Localization;
 
 import com.qualcomm.robotcore.eventloop.opmode.LinearOpMode;
+import com.qualcomm.robotcore.eventloop.opmode.Disabled;
 import com.qualcomm.robotcore.eventloop.opmode.TeleOp;
 
 import org.firstinspires.ftc.teamcode.follower.drivetrain.DrivePowers;
@@ -23,6 +24,7 @@ import java.util.List;
  * Put a tape mark under a corner before starting. When the spin ends the robot
  * should be pointing the same way it started. If it isn't, the heading is off.
  */
+@Disabled   // hidden from the Driver Station: test OpMode. Remove this line to use it.
 @TeleOp(name = "Odo Cal: Spin", group = "Test")
 public class OdoSpinCal extends LinearOpMode {
 
