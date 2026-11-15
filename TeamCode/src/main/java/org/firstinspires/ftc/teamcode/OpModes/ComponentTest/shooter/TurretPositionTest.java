@@ -13,7 +13,8 @@ import org.firstinspires.ftc.teamcode.Components.Shooter;
 
 /**
  * Finds the turret's two ends: TURRET_MIN_TICKS (counterclockwise end) and TURRET_MAX_TICKS
- * (clockwise end). Same RUN_TO_POSITION control as Shooter, no PID of our own.
+ * (clockwise end). Uses the SDK's RUN_TO_POSITION to jog, so it works before the turret PID
+ * is tuned (Shooter itself uses its own PID: tune it next with "Shooter 5: Turret PID").
  *
  * How to use:
  *   1. Point the turret straight forward (TURRET_START_DEG, 90 deg) and press INIT.
