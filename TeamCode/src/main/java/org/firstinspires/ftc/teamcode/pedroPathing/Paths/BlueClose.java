@@ -20,8 +20,8 @@ import java.util.List;
 import static org.firstinspires.ftc.teamcode.follower.api.Paths.*;
 
 /**
- * Blue close auto: the first half of BlueAuto. Intakes along the top wall, returns to start,
- * shoots, then stops. The route is a list of legs: each one waits, drives one path, then waits again.
+ * Blue close auto: shoots the preload at start, waits, drives to firstStop, waits, then parks.
+ * The route is a list of legs: each one waits, drives one path, then waits again.
  * Edit the route in route(). Everything below the route runs it and should rarely need changes.
  */
 @Autonomous(name = "Blue Close")
@@ -47,8 +47,8 @@ public class BlueClose extends LinearOpMode {
     private final PoseFactory p = PoseFactory.degrees();
 
     private final Pose start            = p.of(95, 144, 270);
-    private final Pose preIntake        = p.of(101.8, 1.6, 0);
-    private final Pose postIntake       = p.of(125.8, 120.6, 0);   // 24 in forward of preIntake
+    private final Pose firstStop        = p.of(120, 120, 270);
+    private final Pose park             = p.of(130, 50, 270);
 
     // =================================================================
     //  ACTIONS
@@ -75,23 +75,23 @@ public class BlueClose extends LinearOpMode {
     // =================================================================
     //  ROUTE - one entry per leg
     //    .waitBefore(s) / .waitAfter(s)   pause before driving / after arriving
-    //    .before(action)                  start an action before driving; the wait before ends early once it finishes
+    //    .before(action, maxS)            run an action before driving, until it finishes or maxS passes;
+    //                                     .waitBefore(s) then counts from when it is done
     //    .at(s, action)                   start an action s seconds after the leg starts driving
     //    .onArrive(action)                start an action on arrival; the wait after ends early once it finishes
     //    .timeout(s) .posTol(in) .headingTol(deg) .timeoutPosTol(in)
     // =================================================================
     private List<Leg> route() {
         return Arrays.asList(
-                new Leg("To preIntake", line(start, preIntake).linear(start, preIntake))
-                        .before(Action.SHOOT).waitBefore(1.5)   // preload shot before moving
-                        .at(0, Action.INTAKE).waitAfter(0.5),
+                new Leg("To firstStop", line(start, firstStop).constant(firstStop))
+                        .before(Action.SHOOT, 1.5)   // preload shot before moving, up to 1.5 s
+                        .waitBefore(4.0)             // then sit 4 s after the shot
+                        .waitAfter(0.0),
 
-                new Leg("To postIntake", line(preIntake, postIntake).linear(preIntake, postIntake)),
+                new Leg("To park", line(firstStop, park).constant(park))
+                        .waitBefore(3.0)             // 3 s at firstStop before driving on
 
-                new Leg("Back to start", line(postIntake, start).linear(postIntake, start))
-                        .at(0, Action.STOP_INTAKE).onArrive(Action.SHOOT).waitAfter(1.5)
-
-                // The route ends here: the robot stops at start after this shot.
+                // The route ends here: the robot stops at park.
         );
     }
 
@@ -102,7 +102,9 @@ public class BlueClose extends LinearOpMode {
         double waitBefore = WAIT_BEFORE, waitAfter = WAIT_AFTER, timeout = TIMEOUT;
         double posTol = POS_TOL, headingTol = Math.toRadians(HEADING_TOL), timeoutPosTol = TIMEOUT_POS_TOL;
         Action before = null, onArrive = null;
+        double beforeMax = 0;
         boolean beforeStarted = false;
+        double beforeDoneAt = -1;   // phase time when the before action finished, -1 until then
         final List<Timed> timed = new ArrayList<>();
 
         Leg(String name, Path path) {
@@ -117,7 +119,7 @@ public class BlueClose extends LinearOpMode {
         Leg posTol(double in)          { posTol = in; return this; }
         Leg headingTol(double deg)     { headingTol = Math.toRadians(deg); return this; }
         Leg timeoutPosTol(double in)   { timeoutPosTol = in; return this; }
-        Leg before(Action a)           { before = a; return this; }
+        Leg before(Action a, double maxS) { before = a; beforeMax = maxS; return this; }
         Leg onArrive(Action a)         { onArrive = a; return this; }
         Leg at(double s, Action a)     { timed.add(new Timed(s, a)); return this; }
     }
@@ -172,18 +174,24 @@ public class BlueClose extends LinearOpMode {
             }
 
             switch (phase) {
-                case WAIT_BEFORE:
+                case WAIT_BEFORE: {
+                    double tw = t - (legIndex == 0 ? START_DELAY : 0);   // START_DELAY holds off the whole first leg
+                    if (tw < 0) break;
                     if (leg.before != null && !leg.beforeStarted) {
                         start(leg.before);
                         leg.beforeStarted = true;
                     }
-                    if (t >= leg.waitBefore + (legIndex == 0 ? START_DELAY : 0)
-                            || (leg.before != null && finished(leg.before))) {
+                    if (leg.beforeDoneAt < 0
+                            && (leg.before == null || finished(leg.before) || tw >= leg.beforeMax)) {
+                        leg.beforeDoneAt = tw;
+                    }
+                    if (leg.beforeDoneAt >= 0 && tw >= leg.beforeDoneAt + leg.waitBefore) {
                         follower.follow(leg.path);
                         driveTimer.reset();
                         setPhase(Phase.DRIVE);
                     }
                     break;
+                }
 
                 case DRIVE: {
                     double dist = pose.distance(leg.end);
