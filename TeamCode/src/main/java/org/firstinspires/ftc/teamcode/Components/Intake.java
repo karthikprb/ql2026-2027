@@ -32,8 +32,8 @@ public class Intake {
     public static double DROPDOWN_RAISED = 0.3;
 
     // ---------------- motor powers ----------------
-    public static double INTAKE_POWER = 1.0;
-    public static double OUTTAKE_POWER = -1.0;
+    public static double INTAKE_POWER = 1;
+    public static double OUTTAKE_POWER = -1;
 
     public enum State { INTAKE, STOW, OUTTAKE }
 

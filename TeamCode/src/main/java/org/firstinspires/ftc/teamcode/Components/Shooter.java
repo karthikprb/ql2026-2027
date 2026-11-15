@@ -63,8 +63,8 @@ public class Shooter {
     // =================================================================
     //  HOOD
     // =================================================================
-    public static double HOOD_MIN = 0.0;
-    public static double HOOD_MAX = 1.0;
+    public static double HOOD_MAX = 0.45;
+    public static double HOOD_MIN = .88;
 
     // =================================================================
     //  TURRET  (0 deg = full left, 90 deg = straight ahead, 180 deg = full right)
@@ -192,7 +192,7 @@ public class Shooter {
         leftPid.setOutputLimits(-1, 1);
         rightPid.setOutputLimits(-1, 1);
 
-        hood.setPosition(targetHood);
+        hood.setPosition(HOOD_MIN);
         loopTimer.reset();
     }
 

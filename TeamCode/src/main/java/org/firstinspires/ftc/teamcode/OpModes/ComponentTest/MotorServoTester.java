@@ -22,12 +22,12 @@ import com.qualcomm.robotcore.hardware.Servo;
 @TeleOp(name = "Motor + Servo Tester", group = "Test")
 public class MotorServoTester extends LinearOpMode {
 
-    public static String MOTOR_NAME = "shooterLeft";
+    public static String MOTOR_NAME = "intakeMotor";
     public static double POWER = 0.0;
 
-    public static String SERVO_1_NAME = "servo1";
-    public static String SERVO_2_NAME = "servo2";
-    public static String SERVO_3_NAME = "servo3";
+    public static String SERVO_1_NAME = "intakeServo";
+    public static String SERVO_2_NAME = "intakeServo";
+    public static String SERVO_3_NAME = "intakeServo";
 
     public static double SERVO_1_POS = 0.5;
     public static double SERVO_2_POS = 0.5;

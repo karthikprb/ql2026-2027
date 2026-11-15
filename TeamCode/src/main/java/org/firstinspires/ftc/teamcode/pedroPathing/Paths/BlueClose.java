@@ -49,9 +49,9 @@ public class BlueClose extends LinearOpMode {
     // =================================================================
     private final PoseFactory p = PoseFactory.degrees();
 
-    private final Pose start            = p.of(95, 144, 270);
+    private final Pose start            = p.of(95, 137, 270);
     private final Pose firstStop        = p.of(120, 120, 270);
-    private final Pose park             = p.of(130, 50, 270);
+    private final Pose park             = p.of(130, 66, 270);
 
     // =================================================================
     //  SHOT

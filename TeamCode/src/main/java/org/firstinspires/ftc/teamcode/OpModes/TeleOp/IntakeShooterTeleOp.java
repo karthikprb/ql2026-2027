@@ -119,6 +119,7 @@ public class IntakeShooterTeleOp extends LinearOpMode {
 
             shooter.update();
 
+
             // ---------------- telemetry ----------------
             telemetry.addData("Drive", (fieldCentric ? "FIELD-centric" : "ROBOT-centric")
                     + (scale < 1.0 ? "  SLOW" : "") + "  (Options to switch)");
