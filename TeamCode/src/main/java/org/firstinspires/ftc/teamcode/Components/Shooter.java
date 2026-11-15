@@ -16,7 +16,7 @@ import org.firstinspires.ftc.teamcode.follower.utils.Angle;
 
 /**
  * Shooter = two flywheel motors (velocity PID + feedforward), a hood servo and a turret motor
- * (SDK RUN_TO_POSITION on a target tick count, TURRET_MIN_DEG..TURRET_MAX_DEG, no wrapping).
+ * (our own PID on the turret angle, TURRET_MIN_DEG..TURRET_MAX_DEG, no wrapping).
  *
  * The hood is just open or closed. It never changes with the robot's position: the only thing
  * that moves it is the OpMode calling setHoodPosition() (the TeleOp does that on gamepad 1 Y).
@@ -93,8 +93,15 @@ public class Shooter {
     public static double TURRET_MAX_DEG = 120;             // PLACEHOLDER: clockwise end, degrees
     public static int TURRET_MAX_TICKS = 45;               // PLACEHOLDER: encoder ticks at TURRET_MAX_DEG
 
-    public static double TURRET_MAX_POWER = 0.6;           // power given to RUN_TO_POSITION
-    public static double TURRET_TOLERANCE_DEG = 1.0;
+    // Turret PID, on the angle in DEGREES (so the gains don't change if the gearing does).
+    // Tune with "Shooter 5: Turret PID". Output = motor power, capped at +/- TURRET_MAX_POWER.
+    public static double TURRET_KP = 0.02;                 // power per degree of error (PLACEHOLDER)
+    public static double TURRET_KI = 0.0;                  // power per degree-second of error
+    public static double TURRET_KD = 0.0005;               // power per degree/second (damping)
+    public static double TURRET_KS = 0.0;                  // extra power to overcome friction, added outside TURRET_TOLERANCE_DEG
+    public static double TURRET_I_LIMIT = 20;              // cap on the integral (degree-seconds) so it can't wind up
+    public static double TURRET_MAX_POWER = 0.6;           // max motor power the PID can give
+    public static double TURRET_TOLERANCE_DEG = 1.0;       // "on target" within this; KS turns off inside it
 
     // =================================================================
     //  GOALS  (field inches, same frame as the Pedro pose: 0..144 on both axes)
@@ -156,6 +163,8 @@ public class Shooter {
 
     private final PidController leftPid = new PidController(FLYWHEEL_KP, FLYWHEEL_KI, FLYWHEEL_KD);
     private final PidController rightPid = new PidController(FLYWHEEL_KP, FLYWHEEL_KI, FLYWHEEL_KD);
+    private final PidController turretPid = new PidController(TURRET_KP, TURRET_KI, TURRET_KD);
+    private double turretPower = 0;   // last power sent to the turret, for telemetry
     private final ElapsedTime loopTimer = new ElapsedTime();
 
     // ---------------- targets (before trim) ----------------
@@ -197,11 +206,10 @@ public class Shooter {
                 ? DcMotorSimple.Direction.REVERSE : DcMotorSimple.Direction.FORWARD);
 
         // The turret is wherever TURRET_START_DEG says it is at init; the count resets there.
-        // The SDK does the position control: we only give it a target tick count and a power.
+        // Our PID does the position control, so the motor runs on raw power (the encoder still counts).
         if (turret != null) {
             turret.setMode(DcMotor.RunMode.STOP_AND_RESET_ENCODER);
-            turret.setTargetPosition(0);   // must be set before switching to RUN_TO_POSITION
-            turret.setMode(DcMotor.RunMode.RUN_TO_POSITION);
+            turret.setMode(DcMotor.RunMode.RUN_WITHOUT_ENCODER);
             turret.setZeroPowerBehavior(DcMotor.ZeroPowerBehavior.BRAKE);
         }
 
@@ -365,9 +373,28 @@ public class Shooter {
 
         // ---- turret ----
         if (turret != null) {
-            turret.setTargetPosition(turretTicksForDegrees(commandedTurretDeg()));
-            turret.setPower(Range.clip(TURRET_MAX_POWER, 0, 1));
+            turretPower = turretPidPower(commandedTurretDeg(), getTurretDegrees(), dt);
+            turret.setPower(turretPower);
         }
+    }
+
+    /**
+     * One step of the turret PID: motor power that moves the turret from currentDeg toward
+     * targetDeg. Gains are re-read every call so Panels changes apply straight away.
+     */
+    private double turretPidPower(double targetDeg, double currentDeg, double dt) {
+        turretPid.setGains(TURRET_KP, TURRET_KI, TURRET_KD);
+        turretPid.setIntegralLimits(-TURRET_I_LIMIT, TURRET_I_LIMIT);
+        double maxPower = Range.clip(TURRET_MAX_POWER, 0, 1);
+
+        double error = targetDeg - currentDeg;
+        double power = turretPid.updateFromError(error, dt);
+        if (Math.abs(error) > TURRET_TOLERANCE_DEG) power += Math.signum(error) * TURRET_KS;
+        power = Range.clip(power, -maxPower, maxPower);
+
+        // The PID works in degrees: positive = toward TURRET_MAX_DEG. Positive motor power
+        // turns toward bigger tick counts, so flip it if TURRET_MAX_TICKS is the smaller count.
+        return TURRET_MAX_TICKS >= TURRET_MIN_TICKS ? power : -power;
     }
 
     /**
@@ -433,6 +460,16 @@ public class Shooter {
     /** Raw turret encoder count since init. 0 without a turret. */
     public int getTurretTicks() {
         return turret == null ? 0 : turret.getCurrentPosition();
+    }
+
+    /** Last power the turret PID sent to the motor (-TURRET_MAX_POWER..TURRET_MAX_POWER). 0 without a turret. */
+    public double getTurretPower() {
+        return turretPower;
+    }
+
+    /** Turret PID error in degrees (target - current). */
+    public double getTurretErrorDeg() {
+        return commandedTurretDeg() - getTurretDegrees();
     }
 
     /** False when this Shooter was made with useTurret = false. */
