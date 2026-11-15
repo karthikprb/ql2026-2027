@@ -14,6 +14,7 @@ import org.firstinspires.ftc.teamcode.follower.math.Pose;
 import org.firstinspires.ftc.teamcode.pedroPathing.Constants;
 import org.firstinspires.ftc.teamcode.pedroPathing.Field;
 import org.firstinspires.ftc.teamcode.pedroPathing.Field.Alliance;
+import org.firstinspires.ftc.teamcode.pedroPathing.PoseStore;
 
 /**
  * The match TeleOp: driving, intake, shooter and turret auto-tracking. Pick the alliance on the
@@ -21,17 +22,22 @@ import org.firstinspires.ftc.teamcode.pedroPathing.Field.Alliance;
  * only say which alliance this is). Everything else is in this class.
  *
  * ---------- Before INIT ----------
- *   Put the robot at the start pose (START_X / START_Y, red is the mirror image), FACING its
- *   alliance's FAR HIVE cell (heading 270 = facing the audience), with the turret pointing
- *   straight forward. The odometry and the turret both count from there.
+ *   After an auto: leave the robot where the auto ended. The auto saved its last pose
+ *   (PoseStore) and this TeleOp starts the odometry from it, so nothing to line up.
+ *   Without an auto (practice): put the robot at the default start pose, FACING its alliance's
+ *   HIVE cell. Blue: (START_X, START_Y) = (85, 120) at the far wall, heading 270 (toward the
+ *   audience). Red: the field turned 180 deg, (59, 24) at the audience wall, heading 90 (away
+ *   from it). Init telemetry says which pose it will use; X during init switches between them.
+ *   Either way the turret must be pointing straight forward at INIT: it counts from there.
  *
  * ---------- Gamepad 1: everything needed to play ----------
  *   Left stick    = drive / strafe        Right stick X = turn
- *   Right trigger = hold for slow mode    Options       = field-centric on / off (forward = toward the audience)
+ *   Right trigger = hold for slow mode    Options       = field-centric on / off (forward = the start heading, toward the cell)
  *   A = intake on   B = intake off (stow)   X = outtake
  *   Right bumper = shooter ON (Shooter.SHOOTER_RPM)   Left bumper = shooter OFF
  *   Y = hood up / down (starts down)
- *   Dpad down = reset heading to 270 (keeps x / y). Square up facing the far cell first.
+ *   Dpad down = reset heading to the start heading (270 blue, 90 red), keeps x / y.
+ *               Square the robot up facing its cell first.
  *   Dpad up   = turret tracking on / off (off = turret straight forward). Starts on.
  *
  * ---------- Gamepad 2: fine tuning only, never needed to play ----------
@@ -41,8 +47,8 @@ import org.firstinspires.ftc.teamcode.pedroPathing.Field.Alliance;
  * ---------- Turret tracking ----------
  *   Every loop the turret is pointed at the alliance's HIVE cell on the robot's end of the field,
  *   from the odometry pose (Shooter.trackGoal):
- *     robot y > Shooter.GOAL_SWITCH_Y  ->  FAR cell  (robot normally facing 270)
- *     robot y < Shooter.GOAL_SWITCH_Y  ->  NEAR cell (robot flipped around, facing 90)
+ *     robot y > Shooter.GOAL_SWITCH_Y  ->  FAR cell  (blue's own half; robot facing 270)
+ *     robot y < Shooter.GOAL_SWITCH_Y  ->  NEAR cell (red's own half; robot facing 90)
  *   The turret can only turn TURRET_MIN_DEG..TURRET_MAX_DEG. If the robot is turned so far that
  *   the cell is outside that range, the turret waits at the nearest end ("AT LIMIT" in telemetry)
  *   and picks the cell up again as soon as the robot turns back toward it.
@@ -52,8 +58,8 @@ import org.firstinspires.ftc.teamcode.pedroPathing.Field.Alliance;
 @Configurable
 public abstract class MainTeleOp extends LinearOpMode {
 
-    // Where the robot is at START, in BLUE numbers. Red uses the mirror image (x -> 144 - x).
-    // Editable in Panels before START.
+    // Default start pose, used when no auto ran first. BLUE numbers; red is the field turned
+    // 180 deg (x -> 144 - x, y -> 144 - y, heading + 180). Editable in Panels before START.
     public static double START_X = 85;
     public static double START_Y = 120;
     public static double START_HEADING_DEG = 270;   // facing the audience = straight at the far cell
@@ -68,24 +74,43 @@ public abstract class MainTeleOp extends LinearOpMode {
 
         Alliance alliance = alliance();
         Follower follower = Constants.create(hardwareMap);
-        Drive drive = new Drive(follower, startPose(alliance).heading());
+        // homeHeading (field-centric forward, dpad down reset) is the alliance's start heading
+        // (270 blue, 90 red), not the auto's end heading.
+        Drive drive = new Drive(follower, defaultStartPose(alliance).heading());
+        long homeDeg = Math.round(Math.toDegrees(drive.getHomeHeading()));
         Intake intake = new Intake(hardwareMap);
         Shooter shooter = new Shooter(hardwareMap);   // with the turret
         shooter.setAlliance(alliance);
 
+        // Start from where the auto left the robot, if an auto for this alliance just ran.
+        boolean autoPoseAvailable = PoseStore.hasPoseFor(alliance);
+        boolean useAutoPose = autoPoseAvailable;
+
         while (opModeInInit()) {
-            Pose start = startPose(alliance);
+            if (autoPoseAvailable && gamepad1.xWasPressed()) useAutoPose = !useAutoPose;
+            Pose start = useAutoPose ? PoseStore.pose() : defaultStartPose(alliance);
+
             telemetry.addData("Alliance", alliance);
-            telemetry.addLine("Robot at the start pose FACING the far cell, turret pointing FORWARD.");
-            telemetry.addData("Start pose", "%.1f, %.1f, %.0f deg", start.x(), start.y(), Math.toDegrees(start.heading()));
-            telemetry.addLine("GP1: sticks drive, RT slow, Options field-centric, dpad down = heading 270");
+            if (useAutoPose) {
+                telemetry.addData("Start pose", "FROM AUTO (%.0f s ago): %.1f, %.1f, %.0f deg",
+                        PoseStore.ageSeconds(), start.x(), start.y(), Math.toDegrees(start.heading()));
+                telemetry.addLine("Leave the robot where the auto ended. X = use the default pose instead.");
+            } else {
+                telemetry.addData("Start pose", "DEFAULT: %.1f, %.1f, %.0f deg", start.x(), start.y(), Math.toDegrees(start.heading()));
+                telemetry.addLine(autoPoseAvailable
+                        ? "Robot at the default pose FACING its cell. X = use the auto's pose instead."
+                        : "No auto pose saved. Robot at the default pose FACING its cell.");
+            }
+            telemetry.addLine("Turret must point straight FORWARD now.");
+            telemetry.addLine("GP1: sticks drive, RT slow, Options field-centric, dpad down = heading " + homeDeg);
             telemetry.addLine("GP1: A intake, B stow, X outtake, Y hood, RB shooter on, LB off, dpad up = tracking");
             telemetry.addLine("GP2 (tuning only): dpad up/down RPM trim, dpad L/R turret trim, Options clear");
             telemetry.update();
         }
         if (isStopRequested()) return;
 
-        follower.setPose(startPose(alliance));
+        follower.setPose(useAutoPose ? PoseStore.pose() : defaultStartPose(alliance));
+        PoseStore.clear();   // used once: the next TeleOp run starts from the default unless an auto runs again
         follower.manual(0, 0, 0);
 
         while (opModeIsActive()) {
@@ -104,8 +129,8 @@ public abstract class MainTeleOp extends LinearOpMode {
             telemetry.addData("Alliance", alliance);
             telemetry.addData("Drive", (drive.isFieldCentric() ? "FIELD-centric" : "ROBOT-centric")
                     + (drive.isSlow() ? "  SLOW" : "") + "  (Options to switch)");
-            telemetry.addData("Robot", "%.1f, %.1f, %.1f deg   (dpad down = heading 270)",
-                    pose.x(), pose.y(), Math.toDegrees(pose.heading()));
+            telemetry.addData("Robot", "%.1f, %.1f, %.1f deg   (dpad down = heading %d)",
+                    pose.x(), pose.y(), Math.toDegrees(pose.heading()), homeDeg);
             telemetry.addLine();
             telemetry.addData("Tracking", shooter.isTracking()
                     ? "ON  -> " + shooter.getActiveGoal().name + (shooter.goalInTurretRange() ? "" : "   AT LIMIT")
@@ -136,8 +161,8 @@ public abstract class MainTeleOp extends LinearOpMode {
         shooter.update();
     }
 
-    /** The start pose for this alliance, read fresh so Panels edits before START count. */
-    private static Pose startPose(Alliance alliance) {
+    /** The default start pose for this alliance, read fresh so Panels edits before START count. */
+    private static Pose defaultStartPose(Alliance alliance) {
         return Field.forAlliance(alliance, PoseFactory.degrees().of(START_X, START_Y, START_HEADING_DEG));
     }
 }

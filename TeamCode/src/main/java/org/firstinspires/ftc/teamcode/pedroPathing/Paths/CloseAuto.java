@@ -13,8 +13,8 @@ import org.firstinspires.ftc.teamcode.follower.math.Pose;
 import org.firstinspires.ftc.teamcode.follower.paths.Path;
 import org.firstinspires.ftc.teamcode.follower.utils.Angle;
 import org.firstinspires.ftc.teamcode.pedroPathing.Constants;
-import org.firstinspires.ftc.teamcode.pedroPathing.Field;
 import org.firstinspires.ftc.teamcode.pedroPathing.Field.Alliance;
+import org.firstinspires.ftc.teamcode.pedroPathing.PoseStore;
 
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -26,9 +26,12 @@ import static org.firstinspires.ftc.teamcode.follower.api.Paths.*;
  * Close auto: shoots the preload at start (flywheels to 2500 RPM, then 3 s of intake feed),
  * waits 2 s, drives to firstStop, waits 3 s, then parks.
  *
- * One class for both alliances: BlueClose and RedClose only say which alliance they are.
- * All poses are written in BLUE numbers; for red, pose() mirrors them across the centre line
- * (x -> 144 - x, heading -> 180 - heading, see Field), which is how the BIOBUZZ field is laid out.
+ * One class for both alliances: BlueClose and RedClose only say which alliance they are, and
+ * poses() holds each alliance's poses. Red is blue turned 180 degrees about the field centre
+ * (see Field): blue starts at the far wall facing the audience (270), red starts at the
+ * audience wall facing away (90), and both then drive diagonally to the driver's LEFT and
+ * on diagonally further away to park. The red start (47, 8, 90) was measured on the field;
+ * the other red poses move the same distances from it as blue's do from blue's start.
  *
  * The route is a list of legs: each one waits, drives one path, then waits again.
  * Edit the route in route(). Everything below the route runs it and should rarely need changes.
@@ -53,21 +56,25 @@ public abstract class CloseAuto extends LinearOpMode {
     private static final double TIMEOUT_POS_TOL = 4.0;   // in, still ok to continue at timeout
 
     // =================================================================
-    //  POSES  (BLUE numbers; red is mirrored automatically by pose())
+    //  POSES  (one set per alliance; the moves are the same, the field is turned 180 deg)
+    //    Blue: facing 270 (toward the audience). Driver's left = +x, forward = -y.
+    //    Red:  facing  90 (away from the audience). Driver's left = -x, forward = +y.
+    //    firstStop = start + 25 in left, 17 in forward.  park = firstStop + 10 in left, 54 in forward.
     // =================================================================
     private final PoseFactory p = PoseFactory.degrees();
 
     private Pose start, firstStop, park;   // set in poses(), once the alliance is known
 
     private void poses() {
-        start     = pose(95, 137, 270);
-        firstStop = pose(120, 120, 270);
-        park      = pose(130, 66, 270);
-    }
-
-    /** A blue-side pose, mirrored to the red side when this is the red auto. */
-    private Pose pose(double x, double y, double headingDeg) {
-        return Field.forAlliance(alliance(), p.of(x, y, headingDeg));
+        if (alliance() == Alliance.BLUE) {
+            start     = p.of(95, 137, 270);
+            firstStop = p.of(120, 120, 270);
+            park      = p.of(130, 66, 270);
+        } else {
+            start     = p.of(47, 8, 90);     // measured: the red spot that matches blue's start
+            firstStop = p.of(22, 25, 90);
+            park      = p.of(12, 79, 90);
+        }
     }
 
     // =================================================================
@@ -233,6 +240,7 @@ public abstract class CloseAuto extends LinearOpMode {
         while (opModeIsActive()) {
             follower.update();
             Pose pose = follower.pose();
+            PoseStore.save(pose, alliance());   // so the TeleOp can carry on from wherever this ends
             Leg leg = phase == Phase.DONE ? null : route.get(legIndex);
             double t = phaseTimer.seconds();
 

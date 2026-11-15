@@ -6,7 +6,8 @@ import org.firstinspires.ftc.teamcode.pedroPathing.Field.Alliance;
 
 /**
  * The match TeleOp for the RED alliance. Everything is in MainTeleOp; this only picks the
- * alliance, which gives the red HIVE cells and the mirrored start pose (x -> 144 - x).
+ * alliance, which gives the red HIVE cells and the red start pose: the blue one with the field
+ * turned 180 deg, (59, 24) at the audience wall facing away (heading 90).
  */
 @TeleOp(name = "Main TeleOp RED", group = "TeleOp")
 public class MainTeleOpRed extends MainTeleOp {

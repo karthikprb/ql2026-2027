@@ -117,8 +117,9 @@ public class Shooter {
     //  (robot flipped around to face 90). See chooseGoal().
     //
     //  The x/y/z below are PLACEHOLDERS worked out from the frame size. Measure the real
-    //  ones off the field CAD or with a tape measure from the field walls. Red is the mirror
-    //  image of blue across x = 72 (see Field), so RED x = 144 - BLUE x.
+    //  ones off the field CAD or with a tape measure from the field walls. Red is blue turned
+    //  180 deg about the field centre (see Field); the cells sit symmetric about y = 72, so
+    //  RED x = 144 - BLUE x with the same two y values.
     // =================================================================
 
     /** A goal position on the field: x, y in inches on the tiles, z = opening height above the tiles. */

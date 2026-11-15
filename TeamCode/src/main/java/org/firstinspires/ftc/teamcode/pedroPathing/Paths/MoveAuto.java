@@ -11,6 +11,7 @@ import org.firstinspires.ftc.teamcode.follower.follower.Follower;
 import org.firstinspires.ftc.teamcode.follower.math.Pose;
 import org.firstinspires.ftc.teamcode.follower.utils.Angle;
 import org.firstinspires.ftc.teamcode.pedroPathing.Constants;
+import org.firstinspires.ftc.teamcode.pedroPathing.PoseStore;
 
 /**
  * Template: start at one pose, drive in a straight line to another, stop. That's all.
@@ -55,6 +56,7 @@ public class MoveAuto extends LinearOpMode {
         while (opModeIsActive()) {
             follower.update();
             Pose pose = follower.pose();
+            PoseStore.save(pose, null);   // so the TeleOp can carry on from wherever this ends
             double dist = pose.distance(END);
             double headErrDeg = Math.toDegrees(Math.abs(Angle.error(pose.heading(), END.heading())));
 

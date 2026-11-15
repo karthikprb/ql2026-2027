@@ -5,9 +5,11 @@ import com.qualcomm.robotcore.eventloop.opmode.Autonomous;
 import org.firstinspires.ftc.teamcode.pedroPathing.Field.Alliance;
 
 /**
- * Red close auto: the mirror image of Blue Close. The whole auto is in CloseAuto; this only
- * picks the alliance, and CloseAuto mirrors every blue pose across the centre line
- * (x -> 144 - x, heading -> 180 - heading). Start (95, 137, 270) becomes (49, 137, 270).
+ * Red close auto: the same moves as Blue Close with the field turned 180 degrees. Starts at
+ * the measured red spot (47, 8, 90) at the audience wall facing away, shoots, drives
+ * diagonally to the driver's left to (22, 25), then on to park at (12, 79).
+ * The whole auto is in CloseAuto; this only picks the alliance. Edit the red poses in
+ * CloseAuto.poses().
  */
 @Autonomous(name = "Red Close")
 public class RedClose extends CloseAuto {
