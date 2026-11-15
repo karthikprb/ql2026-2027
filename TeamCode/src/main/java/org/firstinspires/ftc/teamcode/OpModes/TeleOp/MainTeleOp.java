@@ -8,6 +8,7 @@ import com.qualcomm.robotcore.eventloop.opmode.LinearOpMode;
 import org.firstinspires.ftc.teamcode.Components.Drive;
 import org.firstinspires.ftc.teamcode.Components.Intake;
 import org.firstinspires.ftc.teamcode.Components.Shooter;
+import org.firstinspires.ftc.teamcode.Components.ShotSequence;
 import org.firstinspires.ftc.teamcode.follower.api.PoseFactory;
 import org.firstinspires.ftc.teamcode.follower.follower.Follower;
 import org.firstinspires.ftc.teamcode.follower.math.Pose;
@@ -33,9 +34,12 @@ import org.firstinspires.ftc.teamcode.pedroPathing.PoseStore;
  * ---------- Gamepad 1: everything needed to play ----------
  *   Left stick    = drive / strafe        Right stick X = turn
  *   Right trigger = hold for slow mode    Options       = field-centric on / off (forward = the start heading, toward the cell)
- *   A = intake on   B = intake off (stow)   X = outtake
+ *   A = intake toggle: off -> on at full power, on -> off      B = intake off (stow)   X = outtake
+ *   Dpad left = intake on at 0.3 power   Dpad right = intake on at 0.6 power
  *   Right bumper = shooter ON (Shooter.SHOOTER_RPM)   Left bumper = shooter OFF
- *   Y = hood up / down (starts down)
+ *   Y = SHOT SEQUENCE: hood up -> flywheels on -> at speed, intake feeds for 3 s -> hood down,
+ *       intake off, flywheels back to how they were. Y again (or LB) cancels. (ShotSequence)
+ *   Share = hood up / down by hand (starts down)
  *   Dpad down = reset heading to the start heading (270 blue, 90 red), keeps x / y.
  *               Square the robot up facing its cell first.
  *   Dpad up   = turret tracking on / off (off = turret straight forward). Starts on.
@@ -53,7 +57,7 @@ import org.firstinspires.ftc.teamcode.pedroPathing.PoseStore;
  *   the cell is outside that range, the turret waits at the nearest end ("AT LIMIT" in telemetry)
  *   and picks the cell up again as soon as the robot turns back toward it.
  *
- * All the gamepad code lives in Drive / Intake / Shooter: change controls there.
+ * All the gamepad code lives in Drive / Intake / Shooter / ShotSequence: change controls there.
  */
 @Configurable
 public abstract class MainTeleOp extends LinearOpMode {
@@ -81,6 +85,7 @@ public abstract class MainTeleOp extends LinearOpMode {
         Intake intake = new Intake(hardwareMap);
         Shooter shooter = new Shooter(hardwareMap);   // with the turret
         shooter.setAlliance(alliance);
+        ShotSequence shot = new ShotSequence(shooter, intake);
 
         // Start from where the auto left the robot, if an auto for this alliance just ran.
         boolean autoPoseAvailable = PoseStore.hasPoseFor(alliance);
@@ -103,7 +108,8 @@ public abstract class MainTeleOp extends LinearOpMode {
             }
             telemetry.addLine("Turret must point straight FORWARD now.");
             telemetry.addLine("GP1: sticks drive, RT slow, Options field-centric, dpad down = heading " + homeDeg);
-            telemetry.addLine("GP1: A intake, B stow, X outtake, Y hood, RB shooter on, LB off, dpad up = tracking");
+            telemetry.addLine("GP1: A intake on/off, dpad L/R intake 0.3/0.6, B stow, X outtake");
+            telemetry.addLine("GP1: Y = shot sequence, Share = hood, RB shooter on, LB off, dpad up = tracking");
             telemetry.addLine("GP2 (tuning only): dpad up/down RPM trim, dpad L/R turret trim, Options clear");
             telemetry.update();
         }
@@ -120,6 +126,7 @@ public abstract class MainTeleOp extends LinearOpMode {
             intake.handleGamepad(gamepad1);
             shooter.handleGamepad(gamepad1);
             shooter.handleTrimGamepad(gamepad2);
+            shot.handleGamepad(gamepad1);         // Y shot sequence; runs after the others so it has the last word
 
             Pose pose = follower.pose();
             shooter.trackGoal(pose);              // turret follows the cell on this end of the field
@@ -139,12 +146,15 @@ public abstract class MainTeleOp extends LinearOpMode {
                     shooter.commandedTurretDeg(), shooter.getTurretDegrees());
             telemetry.addData("Distance to cell (in)", "%.1f", shooter.getLastDistanceToGoal());
             telemetry.addLine();
-            telemetry.addData("Intake", intake.getState());
+            telemetry.addData("Intake", "%s%s", intake.getState(),
+                    intake.getState() == Intake.State.INTAKE ? String.format("  power %.1f", intake.getIntakePower()) : "");
+            telemetry.addData("Shot (Y)", shot.isRunning()
+                    ? String.format("%s  %.1f s", shot.getState(), shot.secondsInState()) : "idle");
             telemetry.addData("Shooter", shooter.isShooterOn() ? "ON" : "off");
             telemetry.addData("Target RPM (with trim)", "%.0f", shooter.commandedRpm());
             telemetry.addData("Left / Right RPM", "%.0f / %.0f", shooter.getLeftRpm(), shooter.getRightRpm());
             telemetry.addData("Ready to shoot", shooter.readyToShoot());
-            telemetry.addData("Hood", "%s  %.3f  (Y to toggle)", shooter.isHoodUp() ? "UP" : "down", shooter.commandedHood());
+            telemetry.addData("Hood", "%s  %.3f  (Share to toggle)", shooter.isHoodUp() ? "UP" : "down", shooter.commandedHood());
             telemetry.addData("Trims RPM / turret", "%.0f / %.1f", shooter.getRpmTrim(), shooter.getTurretTrimDeg());
             // Plain numbers for the Panels graph.
             telemetry.addData("targetRpm", shooter.commandedRpm());

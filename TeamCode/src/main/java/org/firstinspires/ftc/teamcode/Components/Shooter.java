@@ -23,10 +23,11 @@ import org.firstinspires.ftc.teamcode.pedroPathing.Field.Alliance;
  * robot's position. It starts down when the Shooter is made.
  *
  * Three ways to use it:
- *   - Gamepad: handleGamepad(gamepad1) for shooter on/off, the hood and the tracking toggle,
- *              plus trackGoal(pose) every loop to keep the turret on the goal, and
- *              handleTrimGamepad(gamepad2) for RPM / turret trims. All the shooter's
- *              gamepad buttons live in this class, not in the OpMode.
+ *   - Gamepad: handleGamepad(gamepad1) for shooter on/off (bumpers), the hood (Share) and the
+ *              tracking toggle (dpad up), plus trackGoal(pose) every loop to keep the turret on
+ *              the goal, and handleTrimGamepad(gamepad2) for RPM / turret trims. The Y shot
+ *              sequence is in ShotSequence. All the shooter's gamepad buttons live in these
+ *              component classes, not in the OpMode.
  *   - Manual:  setTargetRpm(), setHoodUp() / setHoodPosition(), setTurretDegrees()
  *   - Auto:    setAlliance() once, then aimAt(robotPose) every loop. It picks the alliance's
  *              goal on the robot's side of the field, sets the flywheels to AIM_RPM and points
@@ -183,6 +184,7 @@ public class Shooter {
     // ---------------- gamepad 1 state ----------------
     private boolean shooterOn = false;
     private boolean hoodUp = false;   // starts down
+    private boolean lastShare = false;
 
     // ---------------- driver trims (gamepad 2) ----------------
     private double rpmTrim = 0;
@@ -380,8 +382,9 @@ public class Shooter {
     //  GAMEPAD 1 (driver)
     //    Right bumper = shooter ON at SHOOTER_RPM
     //    Left bumper  = shooter OFF
-    //    Y            = hood toggle: up (HOOD_MAX) / down (HOOD_MIN), starts down
+    //    Share        = hood toggle: up (HOOD_MAX) / down (HOOD_MIN), starts down
     //    Dpad up      = turret tracking on / off (off = turret straight forward), starts on
+    //    (Y is the full shot sequence: see ShotSequence, which drives this class directly.)
     // =================================================================
     public void handleGamepad(Gamepad gamepad) {
         if (gamepad.rightBumperWasPressed()) shooterOn = true;
@@ -389,11 +392,20 @@ public class Shooter {
         // Set every loop so a SHOOTER_RPM change in Panels applies straight away.
         setTargetRpm(shooterOn ? SHOOTER_RPM : 0);
 
-        if (gamepad.yWasPressed()) hoodUp = !hoodUp;
+        // Share has no *WasPressed() helper on every SDK, so detect the press edge here.
+        boolean share = gamepad.share;
+        if (share && !lastShare) hoodUp = !hoodUp;
+        lastShare = share;
         // Also every loop, so HOOD_MIN / HOOD_MAX changes in Panels apply straight away.
         setHoodUp(hoodUp);
 
         if (gamepad.dpadUpWasPressed()) tracking = !tracking;
+    }
+
+    /** Flywheels on at SHOOTER_RPM (true) or off (false); the same thing the bumpers do. */
+    public void setShooterOn(boolean on) {
+        shooterOn = on;
+        setTargetRpm(on ? SHOOTER_RPM : 0);
     }
 
     public boolean isShooterOn() {
