@@ -34,11 +34,11 @@ import org.firstinspires.ftc.teamcode.pedroPathing.Constants;
  *
  * ---------- Gamepad 2 (Shooter's own trim controls, from Shooter.handleGamepad) ----------
  *   Dpad up / down      = RPM    +/- Shooter.RPM_STEP
- *   Right / left bumper = hood   +/- Shooter.HOOD_STEP
  *   Options             = clear all trims
  *   (TURRET COMMENTED OUT FOR NOW: Dpad right / left = turret +/- Shooter.TURRET_STEP_DEG)
  *
- * The hood starts closed (HOOD_CLOSED). Gamepad 2's hood trim is added on top of open/closed.
+ * The hood has only two positions, HOOD_CLOSED and HOOD_OPEN, and starts closed.
+ * Gamepad 1 Y is the only thing that moves it.
  * The turret is OFF in this OpMode: Shooter is made without it, so the turret motor is never
  * accessed and doesn't need to be in the robot config.
  * (TURRET COMMENTED OUT FOR NOW: the turret holds wherever it was pointing at INIT, since
@@ -54,9 +54,9 @@ public class IntakeShooterTeleOp extends LinearOpMode {
     /** Drive power multiplier while the right trigger is held. Editable in Panels. */
     public static double SLOW_MODE_SCALE = 0.4;
 
-    /** Hood servo positions for the Y toggle. Editable in Panels; kept inside Shooter.HOOD_MIN..HOOD_MAX. */
-    public static double HOOD_CLOSED = 0.0;
-    public static double HOOD_OPEN = 1.0;
+    /** Hood servo positions for the Y toggle (same as Shooter.HOOD_MIN / HOOD_MAX). Editable in Panels. */
+    public static double HOOD_CLOSED = 0.88;
+    public static double HOOD_OPEN = 0.45;
 
     @Override
     public void runOpMode() {
@@ -133,10 +133,9 @@ public class IntakeShooterTeleOp extends LinearOpMode {
             // TURRET COMMENTED OUT FOR NOW
             // telemetry.addData("Turret target / now (deg)", "%.1f / %.1f",
             //         shooter.commandedTurretDeg(), shooter.getTurretDegrees());
-            // telemetry.addData("Trims RPM / hood / turret", "%.0f / %.3f / %.1f",
-            //         shooter.getRpmTrim(), shooter.getHoodTrim(), shooter.getTurretTrimDeg());
-            telemetry.addData("Trims RPM / hood", "%.0f / %.3f",
-                    shooter.getRpmTrim(), shooter.getHoodTrim());
+            // telemetry.addData("Trims RPM / turret", "%.0f / %.1f",
+            //         shooter.getRpmTrim(), shooter.getTurretTrimDeg());
+            telemetry.addData("RPM trim", "%.0f", shooter.getRpmTrim());
             // Plain numbers for the Panels graph.
             telemetry.addData("targetRpm", shooter.commandedRpm());
             telemetry.addData("leftRpm", shooter.getLeftRpm());

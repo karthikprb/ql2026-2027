@@ -16,7 +16,7 @@ import org.firstinspires.ftc.teamcode.Components.Shooter;
  * Move the hood slowly toward one end. Stop just before it hits the hard stop or the
  * servo starts buzzing, and save it. Do the same at the other end.
  *
- * Shooter.stop() sends the hood to HOOD_MIN, so HOOD_MIN should be the "down" or stowed end.
+ * The hood starts at HOOD_MIN when the Shooter is made, so HOOD_MIN should be the closed end.
  *
  * Gamepad 1:
  *   Dpad up / down    = position +/- 0.005  (fine)
@@ -69,16 +69,14 @@ public class HoodRangeTest extends LinearOpMode {
             telemetry.addLine();
 
             if (!Double.isNaN(down) && !Double.isNaN(up)) {
-                if (down < up) {
+                if (down != up) {
+                    // Either order is fine: Shooter.setHoodPosition() keeps the hood between the two.
                     telemetry.addLine("Paste into Shooter.java:");
-                    telemetry.addLine(String.format("HOOD_MIN = %.3f;", down));
-                    telemetry.addLine(String.format("HOOD_MAX = %.3f;", up));
-                    telemetry.addLine("Hood rises as the servo position goes UP.");
-                    telemetry.addLine("So a bigger HOOD_PER_INCH = more hood at long range.");
-                } else if (down > up) {
-                    telemetry.addLine("Your down end is a BIGGER number than your up end.");
-                    telemetry.addLine("Shooter needs HOOD_MIN < HOOD_MAX, so reverse the servo");
-                    telemetry.addLine("(hood.setDirection(REVERSE) in Shooter) and run this again.");
+                    telemetry.addLine(String.format("HOOD_MIN = %.3f;   (closed)", down));
+                    telemetry.addLine(String.format("HOOD_MAX = %.3f;   (open)", up));
+                    telemetry.addLine("and into IntakeShooterTeleOp.java:");
+                    telemetry.addLine(String.format("HOOD_CLOSED = %.3f;", down));
+                    telemetry.addLine(String.format("HOOD_OPEN = %.3f;", up));
                 } else {
                     telemetry.addLine("Both ends are the same position. Save two different ends.");
                 }

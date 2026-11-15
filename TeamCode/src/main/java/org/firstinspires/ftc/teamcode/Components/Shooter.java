@@ -16,17 +16,21 @@ import org.firstinspires.ftc.teamcode.follower.utils.Angle;
 
 /**
  * Shooter = two flywheel motors (velocity PID + feedforward), a hood servo and a turret motor
- * (SDK RUN_TO_POSITION on a target tick count, 0..180 deg, no wrapping).
+ * (SDK RUN_TO_POSITION on a target tick count, TURRET_MIN_DEG..TURRET_MAX_DEG, no wrapping).
+ *
+ * The hood is just open or closed. It never changes with the robot's position: the only thing
+ * that moves it is the OpMode calling setHoodPosition() (the TeleOp does that on gamepad 1 Y).
+ * It starts at HOOD_MIN (closed) when the Shooter is made.
  *
  * Two ways to use it:
  *   - Manual:  setTargetRpm(), setHoodPosition(), setTurretDegrees()
  *   - Auto:    setAlliance() once, then aimAt(robotPose) every loop. It picks the alliance's
- *              goal on the robot's side of the field, and turns distance and angle to it into
- *              an RPM, hood position and turret angle with the placeholder formulas below.
+ *              goal on the robot's side of the field, sets the flywheels to AIM_RPM and points
+ *              the turret at the goal. It does not touch the hood.
  *
  * In both cases call update() once per loop so the flywheel PID runs and the turret target
  * is sent, and handleGamepad(gamepad2)
- * if you want the driver to be able to trim RPM / hood / turret with the dpad and bumpers.
+ * if you want the driver to be able to trim RPM / turret with the dpad.
  * The trims are added on top of whatever aimAt() or the setters asked for.
  *
  * @Configurable: every public static number below shows up under "Shooter" in Panels and
@@ -63,18 +67,32 @@ public class Shooter {
     // =================================================================
     //  HOOD
     // =================================================================
+    // HOOD_MIN = closed, HOOD_MAX = open. On this robot the servo number goes DOWN as the
+    // hood opens, so HOOD_MIN is the bigger number. setHoodPosition() handles either order.
     public static double HOOD_MAX = 0.45;
     public static double HOOD_MIN = .88;
 
     // =================================================================
-    //  TURRET  (0 deg = full left, 90 deg = straight ahead, 180 deg = full right)
+    //  TURRET
+    //    The turret is at TURRET_START_DEG (straight ahead) when the OpMode inits, and the
+    //    encoder count is 0 there. Turning COUNTERCLOCKWISE (left, seen from above) goes
+    //    toward TURRET_MIN_DEG, CLOCKWISE (right) goes toward TURRET_MAX_DEG.
+    //
+    //    Each end has a degree AND the encoder ticks at that degree. Measure both with
+    //    "Shooter 4: Turret Position": jog to each end, read the ticks there, and measure
+    //    the angle. Angles in between are worked out in a straight line from those numbers,
+    //    so the tick signs (+/-) and motor direction are taken care of automatically.
+    //    The turret is never sent past either end.
     // =================================================================
-    public static double TURRET_MIN_DEG = 0;
-    public static double TURRET_MAX_DEG = 180;
+    public static double TURRET_START_DEG = 90;            // where the turret is at init (0 ticks)
     public static double TURRET_FORWARD_DEG = 90;          // turret angle that points along the robot's heading
-    public static double TURRET_START_DEG = 90;            // where the turret physically is when the OpMode inits
-    public static double TURRET_TICKS_PER_DEG = 537.7 * 2.0 / 360.0;  // motor ticks per rev * gear ratio / 360 (PLACEHOLDER, measure with "Shooter 4: Turret Position")
-    public static double TURRET_DIRECTION = 1.0;           // flip to -1 if a bigger tick count moves the turret toward 0 deg
+
+    public static double TURRET_MIN_DEG = 60;              // PLACEHOLDER: counterclockwise end, degrees
+    public static int TURRET_MIN_TICKS = -45;              // PLACEHOLDER: encoder ticks at TURRET_MIN_DEG
+
+    public static double TURRET_MAX_DEG = 120;             // PLACEHOLDER: clockwise end, degrees
+    public static int TURRET_MAX_TICKS = 45;               // PLACEHOLDER: encoder ticks at TURRET_MAX_DEG
+
     public static double TURRET_MAX_POWER = 0.6;           // power given to RUN_TO_POSITION
     public static double TURRET_TOLERANCE_DEG = 1.0;
 
@@ -116,19 +134,18 @@ public class Shooter {
     public static Goal RED_FAR   = new Goal("Red far",   60, 81.4, GOAL_Z);
     public static Goal RED_NEAR  = new Goal("Red near",  60, 62.6, GOAL_Z);
 
-    // PLACEHOLDER formulas, linear in horizontal distance. Replace with your tuned fit (see testing notes).
-    //   rpm  = RPM_BASE  + RPM_PER_INCH  * distance
-    //   hood = HOOD_BASE + HOOD_PER_INCH * distance
+    /** RPM aimAt() always uses for now, whatever the distance. Editable in Panels. */
+    public static double AIM_RPM = 2400;
+
+    // PLACEHOLDER formula, linear in horizontal distance (aimAt() doesn't use it right now).
+    //   rpm = RPM_BASE + RPM_PER_INCH * distance
     public static double RPM_BASE = 2500;
     public static double RPM_PER_INCH = 10;
-    public static double HOOD_BASE = 0.3;
-    public static double HOOD_PER_INCH = 0.002;
 
     // =================================================================
     //  GAMEPAD 2 TRIM STEPS
     // =================================================================
     public static double RPM_STEP = 50;
-    public static double HOOD_STEP = 0.02;
     public static double TURRET_STEP_DEG = 2;
 
     // ---------------- hardware ----------------
@@ -148,7 +165,6 @@ public class Shooter {
 
     // ---------------- driver trims (gamepad 2) ----------------
     private double rpmTrim = 0;
-    private double hoodTrim = 0;
     private double turretTrimDeg = 0;
 
     // ---------------- aiming ----------------
@@ -205,9 +221,9 @@ public class Shooter {
         targetRpm = Range.clip(rpm, 0, FLYWHEEL_MAX_RPM);
     }
 
-    /** Hood servo position, clipped to HOOD_MIN..HOOD_MAX. */
+    /** Hood servo position, kept between HOOD_MIN and HOOD_MAX (whichever order they are in). */
     public void setHoodPosition(double position) {
-        targetHood = Range.clip(position, HOOD_MIN, HOOD_MAX);
+        targetHood = Range.clip(position, Math.min(HOOD_MIN, HOOD_MAX), Math.max(HOOD_MIN, HOOD_MAX));
     }
 
     /** Turret angle in degrees, clipped to TURRET_MIN_DEG..TURRET_MAX_DEG. */
@@ -215,10 +231,9 @@ public class Shooter {
         targetTurretDeg = Range.clip(degrees, TURRET_MIN_DEG, TURRET_MAX_DEG);
     }
 
-    /** Flywheels off, hood down, turret to the forward position. */
+    /** Flywheels off, turret to the forward position. The hood is left where it is. */
     public void stop() {
         setTargetRpm(0);
-        setHoodPosition(HOOD_MIN);
         setTurretDegrees(TURRET_FORWARD_DEG);
     }
 
@@ -251,8 +266,9 @@ public class Shooter {
     }
 
     /**
-     * Works out RPM, hood and turret angle from the robot's field pose and the goal on the
-     * robot's side of the field. Call every loop while lining up, then update().
+     * Sets the flywheels to AIM_RPM and points the turret at the goal on the robot's side of
+     * the field, from the robot's field pose. Leaves the hood alone. Call every loop while
+     * lining up, then update().
      */
     public void aimAt(Pose robotPose) {
         aimAt(robotPose, chooseGoal(robotPose));
@@ -265,8 +281,8 @@ public class Shooter {
         double dy = goal.y - robotPose.y();
         lastDistanceToGoal = Math.hypot(dx, dy);
 
-        setTargetRpm(rpmForDistance(lastDistanceToGoal));
-        setHoodPosition(hoodForDistance(lastDistanceToGoal));
+        // Fixed RPM for now. Switch to rpmForDistance(lastDistanceToGoal) once the shot table is tuned.
+        setTargetRpm(AIM_RPM);
 
         // Angle from the robot to the goal, relative to where the robot is facing.
         // Positive = goal is to the robot's left (CCW), like the Pedro heading.
@@ -289,11 +305,6 @@ public class Shooter {
         return RPM_BASE + RPM_PER_INCH * distanceIn;
     }
 
-    /** PLACEHOLDER: hood servo position for a given horizontal distance (inches) to the goal. */
-    public static double hoodForDistance(double distanceIn) {
-        return HOOD_BASE + HOOD_PER_INCH * distanceIn;
-    }
-
     /**
      * Turret angle for a goal that is relativeDeg off the robot's heading
      * (positive = left / CCW). 0 deg turret = full left, so left is a smaller turret angle.
@@ -305,22 +316,19 @@ public class Shooter {
     // =================================================================
     //  GAMEPAD 2 TRIM
     //    Dpad up / down      = RPM    +/- RPM_STEP
-    //    Right / left bumper = hood   +/- HOOD_STEP
     //    Dpad right / left   = turret +/- TURRET_STEP_DEG
     //    Options             = clear all trims
+    //    (No hood trim: the hood only moves when the OpMode calls setHoodPosition.)
     // =================================================================
     public void handleGamepad(Gamepad gamepad) {
         if (gamepad.dpadUpWasPressed()) rpmTrim += RPM_STEP;
         if (gamepad.dpadDownWasPressed()) rpmTrim -= RPM_STEP;
-        if (gamepad.rightBumperWasPressed()) hoodTrim += HOOD_STEP;
-        if (gamepad.leftBumperWasPressed()) hoodTrim -= HOOD_STEP;
         if (turret != null) {
             if (gamepad.dpadRightWasPressed()) turretTrimDeg += TURRET_STEP_DEG;
             if (gamepad.dpadLeftWasPressed()) turretTrimDeg -= TURRET_STEP_DEG;
         }
         if (gamepad.optionsWasPressed()) {
             rpmTrim = 0;
-            hoodTrim = 0;
             turretTrimDeg = 0;
         }
     }
@@ -362,9 +370,33 @@ public class Shooter {
         }
     }
 
-    /** Encoder count that puts the turret at the given angle. Inverse of getTurretDegrees(). */
+    /**
+     * Encoder count that puts the turret at the given angle. Inverse of turretDegreesForTicks().
+     * Counterclockwise of start it scales between (TURRET_START_DEG, 0) and
+     * (TURRET_MIN_DEG, TURRET_MIN_TICKS); clockwise of start between (TURRET_START_DEG, 0)
+     * and (TURRET_MAX_DEG, TURRET_MAX_TICKS).
+     */
     public static int turretTicksForDegrees(double degrees) {
-        return (int) Math.round(TURRET_DIRECTION * (degrees - TURRET_START_DEG) * TURRET_TICKS_PER_DEG);
+        double offset = degrees - TURRET_START_DEG;
+        if (offset < 0) {
+            double span = TURRET_MIN_DEG - TURRET_START_DEG;
+            return span == 0 ? 0 : (int) Math.round(offset / span * TURRET_MIN_TICKS);
+        } else {
+            double span = TURRET_MAX_DEG - TURRET_START_DEG;
+            return span == 0 ? 0 : (int) Math.round(offset / span * TURRET_MAX_TICKS);
+        }
+    }
+
+    /** Turret angle for an encoder count. Inverse of turretTicksForDegrees(). */
+    public static double turretDegreesForTicks(int ticks) {
+        if (ticks == 0) return TURRET_START_DEG;
+        // Which side of start is this? The side whose end has ticks of the same sign.
+        boolean ccwSide = TURRET_MIN_TICKS != 0 && Math.signum(ticks) == Math.signum(TURRET_MIN_TICKS);
+        if (ccwSide) {
+            return TURRET_START_DEG + (double) ticks / TURRET_MIN_TICKS * (TURRET_MIN_DEG - TURRET_START_DEG);
+        }
+        if (TURRET_MAX_TICKS == 0) return TURRET_START_DEG;
+        return TURRET_START_DEG + (double) ticks / TURRET_MAX_TICKS * (TURRET_MAX_DEG - TURRET_START_DEG);
     }
 
     // =================================================================
@@ -377,7 +409,7 @@ public class Shooter {
     }
 
     public double commandedHood() {
-        return Range.clip(targetHood + hoodTrim, HOOD_MIN, HOOD_MAX);
+        return targetHood;   // already kept inside HOOD_MIN / HOOD_MAX by setHoodPosition
     }
 
     public double commandedTurretDeg() {
@@ -395,7 +427,7 @@ public class Shooter {
     /** Turret angle from the encoder. Without a turret this is just where it is told to be. */
     public double getTurretDegrees() {
         if (turret == null) return commandedTurretDeg();
-        return TURRET_START_DEG + TURRET_DIRECTION * turret.getCurrentPosition() / TURRET_TICKS_PER_DEG;
+        return turretDegreesForTicks(turret.getCurrentPosition());
     }
 
     /** Raw turret encoder count since init. 0 without a turret. */
@@ -426,7 +458,6 @@ public class Shooter {
     }
 
     public double getRpmTrim() { return rpmTrim; }
-    public double getHoodTrim() { return hoodTrim; }
     public double getTurretTrimDeg() { return turretTrimDeg; }
     public double getLastDistanceToGoal() { return lastDistanceToGoal; }
 }
