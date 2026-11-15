@@ -136,7 +136,7 @@ public class Shooter {
     }
 
     /** Robot y above this = shoot at the FAR cell, below = the NEAR cell. Editable in Panels. */
-    public static double GOAL_SWITCH_Y = 60;
+    public static double GOAL_SWITCH_Y = 72;
 
     public static double GOAL_Z = 43.95;             // PLACEHOLDER: HIVE pivot axis height. Measure the up-facing CELL opening.
     public static double SHOOTER_EXIT_HEIGHT = 12.0;  // PLACEHOLDER: height of the ball leaving the shooter, inches above tiles
