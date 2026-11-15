@@ -70,8 +70,8 @@ public class Shooter {
     // The only two hood positions. HOOD_MIN = down, HOOD_MAX = up. On this robot the servo
     // number goes DOWN as the hood goes up, so HOOD_MIN is the bigger number. No cap is applied:
     // whatever these are set to is sent straight to the servo.
-    public static double HOOD_MIN = 0.9;   // down
-    public static double HOOD_MAX = 0.5;   // up
+    public static double HOOD_MIN = 0.86;   // down
+    public static double HOOD_MAX = 0.45;   // up
 
     // =================================================================
     //  TURRET
