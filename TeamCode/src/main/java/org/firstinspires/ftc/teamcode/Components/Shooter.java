@@ -87,7 +87,7 @@ public class Shooter {
     public static double TURRET_START_DEG = 90;            // where the turret is at init (0 ticks)
     public static double TURRET_FORWARD_DEG = 90;          // turret angle that points along the robot's heading
 
-    public static double TURRET_MIN_DEG = 60;              // PLACEHOLDER: counterclockwise end, degrees
+    public static double TURRET_MIN_DEG = 70;              // PLACEHOLDER: counterclockwise end, degrees
     public static int TURRET_MIN_TICKS = 10;              // PLACEHOLDER: encoder ticks at TURRET_MIN_DEG
 
     public static double TURRET_MAX_DEG = 120;             // PLACEHOLDER: clockwise end, degrees
@@ -95,13 +95,13 @@ public class Shooter {
 
     // Turret PID, on the angle in DEGREES (so the gains don't change if the gearing does).
     // Tune with "Shooter 5: Turret PID". Output = motor power, capped at +/- TURRET_MAX_POWER.
-    public static double TURRET_KP = 0.02;                 // power per degree of error (PLACEHOLDER)
+    public static double TURRET_KP = 0.015;                 // power per degree of error (PLACEHOLDER)
     public static double TURRET_KI = 0.0;                  // power per degree-second of error
-    public static double TURRET_KD = 0.0005;               // power per degree/second (damping)
+    public static double TURRET_KD = 0.001;               // power per degree/second (damping)
     public static double TURRET_KS = 0.0;                  // extra power to overcome friction, added outside TURRET_TOLERANCE_DEG
     public static double TURRET_I_LIMIT = 20;              // cap on the integral (degree-seconds) so it can't wind up
     public static double TURRET_MAX_POWER = 0.6;           // max motor power the PID can give
-    public static double TURRET_TOLERANCE_DEG = 1.0;       // "on target" within this; KS turns off inside it
+    public static double TURRET_TOLERANCE_DEG = 3.0;       // "on target" within this; KS turns off inside it
 
     // =================================================================
     //  GOALS  (field inches, same frame as the Pedro pose: 0..144 on both axes)
