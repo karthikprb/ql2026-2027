@@ -384,6 +384,7 @@ public class Shooter {
     //    Left bumper  = shooter OFF
     //    Share        = hood toggle: up (HOOD_MAX) / down (HOOD_MIN), starts down
     //    Dpad up      = turret tracking on / off (off = turret straight forward), starts on
+    //    B            = lock the turret at TURRET_FORWARD_DEG (90): tracking off. Dpad up turns it back on.
     //    (Y is the full shot sequence: see ShotSequence, which drives this class directly.)
     // =================================================================
     public void handleGamepad(Gamepad gamepad) {
@@ -400,6 +401,7 @@ public class Shooter {
         setHoodUp(hoodUp);
 
         if (gamepad.dpadUpWasPressed()) tracking = !tracking;
+        if (gamepad.bWasPressed()) tracking = false;   // trackGoal() then holds the turret at TURRET_FORWARD_DEG
     }
 
     /** Flywheels on at SHOOTER_RPM (true) or off (false); the same thing the bumpers do. */

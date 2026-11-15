@@ -12,15 +12,17 @@ import org.firstinspires.ftc.teamcode.follower.math.Pose;
  * Driver-controlled driving on top of the Pedro follower. All the driving gamepad buttons
  * live here, not in the OpMode.
  *
- * homeHeading is the robot's normal shooting heading on the field (270 deg = facing the
- * audience, straight at the far HIVE cell). It is used two ways:
- *   - Field-centric driving: stick forward = that direction, whichever way the robot faces.
- *   - Dpad down: resets the odometry heading to it (x and y are kept). Use it whenever the
- *     heading has drifted: square the robot up facing the far cell, then press dpad down.
+ * Two headings are given to the constructor, both in radians on the field:
+ *   homeHeading   = the robot's normal shooting heading (270 blue, 90 red). Dpad down resets
+ *                   the odometry heading to it (x and y are kept): square the robot up facing
+ *                   its cell, then press dpad down.
+ *   fieldForward  = the field direction that "stick forward" drives in while field-centric
+ *                   (180 for blue = toward the x = 0 wall, 0 for red), whichever way the robot
+ *                   itself is facing. Driving starts FIELD-centric; Options switches.
  *
  * Usage in an OpMode:
  *   Follower follower = Constants.create(hardwareMap);
- *   Drive drive = new Drive(follower, startPose.heading());
+ *   Drive drive = new Drive(follower, homeHeadingRad, fieldForwardRad);
  *   ...
  *   follower.update();
  *   drive.handleGamepad(gamepad1);     // once per loop
@@ -29,7 +31,7 @@ import org.firstinspires.ftc.teamcode.follower.math.Pose;
  *   Left stick    = drive / strafe
  *   Right stick X = turn
  *   Right trigger = hold for slow mode (SLOW_MODE_SCALE)
- *   Options       = toggle field-centric driving (forward = homeHeading)
+ *   Options       = toggle field-centric (starts ON) / robot-centric
  *   Dpad down     = reset heading to homeHeading, no matter what it reads now
  *
  * @Configurable: SLOW_MODE_SCALE shows up under "Drive" in Panels.
@@ -41,19 +43,21 @@ public class Drive {
     public static double SLOW_MODE_SCALE = 0.4;
 
     private final Follower follower;
-    private final double homeHeading;   // radians
-    private boolean fieldCentric = false;
+    private final double homeHeading;    // radians
+    private final double fieldForward;   // radians
+    private boolean fieldCentric = true;   // starts field-centric
     private boolean slow = false;
     private int headingResets = 0;
 
-    /** homeHeading defaults to 270 deg (facing the audience). */
+    /** homeHeading 270 deg, field-centric forward 180 deg (blue defaults). */
     public Drive(Follower follower) {
-        this(follower, Math.toRadians(270));
+        this(follower, Math.toRadians(270), Math.toRadians(180));
     }
 
-    public Drive(Follower follower, double homeHeadingRad) {
+    public Drive(Follower follower, double homeHeadingRad, double fieldForwardRad) {
         this.follower = follower;
         this.homeHeading = homeHeadingRad;
+        this.fieldForward = fieldForwardRad;
     }
 
     /** Reads the sticks and buttons and sends drive powers to the follower. Call once per loop, after follower.update(). */
@@ -67,8 +71,8 @@ public class Drive {
                 -gamepad.left_stick_y * scale,    // forward
                 -gamepad.left_stick_x * scale,    // strafe (left = positive)
                 -gamepad.right_stick_x * scale);  // turn (left = positive)
-        // Field-centric: stick forward = homeHeading on the field, whichever way the robot faces.
-        if (fieldCentric) powers = ManualDrive.fieldCentric(powers, follower.pose().heading(), -homeHeading);
+        // Field-centric: stick forward = fieldForward on the field, whichever way the robot faces.
+        if (fieldCentric) powers = ManualDrive.fieldCentric(powers, follower.pose().heading(), -fieldForward);
         follower.manual(powers);
     }
 
@@ -83,8 +87,16 @@ public class Drive {
         return homeHeading;
     }
 
+    public double getFieldForward() {
+        return fieldForward;
+    }
+
     public boolean isFieldCentric() {
         return fieldCentric;
+    }
+
+    public void setFieldCentric(boolean on) {
+        fieldCentric = on;
     }
 
     public boolean isSlow() {

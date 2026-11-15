@@ -60,9 +60,9 @@ public class Intake {
      *   A          = toggle: intake OFF -> INTAKE at full INTAKE_POWER; intake ON (any power) -> STOW
      *   Dpad left  = INTAKE at INTAKE_POWER_LOW (0.3)
      *   Dpad right = INTAKE at INTAKE_POWER_MID (0.6)
-     *   B          = STOW     (dropdown up, motor off)
      *   X          = OUTTAKE  (dropdown down, motor at OUTTAKE_POWER)
      * Turning on with A is always full power, whatever dpad left / right set before.
+     * Off is A again (or X then A). B belongs to the turret, see Shooter.
      */
     public void handleGamepad(Gamepad gamepad) {
         if (gamepad.aWasPressed()) {
@@ -71,7 +71,6 @@ public class Intake {
         }
         if (gamepad.dpadLeftWasPressed()) intake(INTAKE_POWER_LOW);
         if (gamepad.dpadRightWasPressed()) intake(INTAKE_POWER_MID);
-        if (gamepad.bWasPressed()) setState(State.STOW);
         if (gamepad.xWasPressed()) setState(State.OUTTAKE);
     }
 

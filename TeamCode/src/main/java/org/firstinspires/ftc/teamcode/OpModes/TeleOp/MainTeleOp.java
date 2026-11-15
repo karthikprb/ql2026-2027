@@ -33,8 +33,10 @@ import org.firstinspires.ftc.teamcode.pedroPathing.PoseStore;
  *
  * ---------- Gamepad 1: everything needed to play ----------
  *   Left stick    = drive / strafe        Right stick X = turn
- *   Right trigger = hold for slow mode    Options       = field-centric on / off (forward = the start heading, toward the cell)
- *   A = intake toggle: off -> on at full power, on -> off      B = intake off (stow)   X = outtake
+ *   Right trigger = hold for slow mode    Options       = field-centric (starts ON) / robot-centric
+ *                   Field-centric: stick forward drives toward field heading FIELD_FORWARD_DEG (180 blue, 0 red)
+ *   A = intake toggle: off -> on at full power, on -> off      X = outtake
+ *   B = lock the turret at 90 (straight ahead), tracking off. Dpad up turns tracking back on.
  *   Dpad left = intake on at 0.3 power   Dpad right = intake on at 0.6 power
  *   Right bumper = shooter ON (Shooter.SHOOTER_RPM)   Left bumper = shooter OFF
  *   Y = SHOT SEQUENCE: hood up -> flywheels on -> at speed, intake feeds for 3 s -> hood down,
@@ -68,6 +70,9 @@ public abstract class MainTeleOp extends LinearOpMode {
     public static double START_Y = 120;
     public static double START_HEADING_DEG = 270;   // facing the audience = straight at the far cell
 
+    /** Field direction "stick forward" drives in while field-centric, BLUE numbers (red gets it turned 180: 0). */
+    public static double FIELD_FORWARD_DEG = 180;
+
     /** BLUE or RED: the only thing the two TeleOp classes decide. */
     protected abstract Alliance alliance();
 
@@ -78,9 +83,10 @@ public abstract class MainTeleOp extends LinearOpMode {
 
         Alliance alliance = alliance();
         Follower follower = Constants.create(hardwareMap);
-        // homeHeading (field-centric forward, dpad down reset) is the alliance's start heading
-        // (270 blue, 90 red), not the auto's end heading.
-        Drive drive = new Drive(follower, defaultStartPose(alliance).heading());
+        // homeHeading (dpad down reset) is the alliance's start heading (270 blue, 90 red), not the
+        // auto's end heading. Field-centric forward is FIELD_FORWARD_DEG (180 blue, 0 red).
+        double fieldForwardDeg = alliance == Alliance.BLUE ? FIELD_FORWARD_DEG : Field.toRedHeadingDeg(FIELD_FORWARD_DEG);
+        Drive drive = new Drive(follower, defaultStartPose(alliance).heading(), Math.toRadians(fieldForwardDeg));
         long homeDeg = Math.round(Math.toDegrees(drive.getHomeHeading()));
         Intake intake = new Intake(hardwareMap);
         Shooter shooter = new Shooter(hardwareMap);   // with the turret
@@ -107,8 +113,9 @@ public abstract class MainTeleOp extends LinearOpMode {
                         : "No auto pose saved. Robot at the default pose FACING its cell.");
             }
             telemetry.addLine("Turret must point straight FORWARD now.");
-            telemetry.addLine("GP1: sticks drive, RT slow, Options field-centric, dpad down = heading " + homeDeg);
-            telemetry.addLine("GP1: A intake on/off, dpad L/R intake 0.3/0.6, B stow, X outtake");
+            telemetry.addLine("GP1: sticks drive (FIELD-centric, forward = " + Math.round(fieldForwardDeg)
+                    + " deg; Options switches), RT slow, dpad down = heading " + homeDeg);
+            telemetry.addLine("GP1: A intake on/off, dpad L/R intake 0.3/0.6, X outtake, B = turret lock 90");
             telemetry.addLine("GP1: Y = shot sequence, Share = hood, RB shooter on, LB off, dpad up = tracking");
             telemetry.addLine("GP2 (tuning only): dpad up/down RPM trim, dpad L/R turret trim, Options clear");
             telemetry.update();
@@ -134,14 +141,14 @@ public abstract class MainTeleOp extends LinearOpMode {
 
             // ---------------- telemetry ----------------
             telemetry.addData("Alliance", alliance);
-            telemetry.addData("Drive", (drive.isFieldCentric() ? "FIELD-centric" : "ROBOT-centric")
+            telemetry.addData("Drive", (drive.isFieldCentric() ? "FIELD-centric, forward = " + Math.round(fieldForwardDeg) + " deg" : "ROBOT-centric")
                     + (drive.isSlow() ? "  SLOW" : "") + "  (Options to switch)");
             telemetry.addData("Robot", "%.1f, %.1f, %.1f deg   (dpad down = heading %d)",
                     pose.x(), pose.y(), Math.toDegrees(pose.heading()), homeDeg);
             telemetry.addLine();
             telemetry.addData("Tracking", shooter.isTracking()
                     ? "ON  -> " + shooter.getActiveGoal().name + (shooter.goalInTurretRange() ? "" : "   AT LIMIT")
-                    : "OFF, turret forward   (dpad up)");
+                    : "OFF, turret locked at 90   (dpad up = track again)");
             telemetry.addData("Turret target / now (deg)", "%.1f / %.1f",
                     shooter.commandedTurretDeg(), shooter.getTurretDegrees());
             telemetry.addData("Distance to cell (in)", "%.1f", shooter.getLastDistanceToGoal());
